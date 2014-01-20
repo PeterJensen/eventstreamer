@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<!--
+-- Author: Peter Jensen
+-->
+<head>
+<script src="./jquery-1.10.2.js"></script>
+<script src="./jquery.base64.js"></script>
+<script src="./server.js"></script>
+</head>
+
+<body>
+Pick File: <input type="file" id="fileToUpload"/>
+<button id="uploadFile">Upload selected file</button><br/>
+
+Capture: <input type="file" id="fileToCapture" accept="image/*; capture=camera"/>
+<button id="uploadCapture">Upload captured file</button><br/>
+
+Upload this image:
+<button filename="IMG_1599_LARGE.JPG" id="upload1">2.2Mb version</button>
+<button filename="IMG_1599_SMALL.JPG" id="upload2">120Kb version</button>
+<button filename="IMG_1599_TINY.JPG" id="upload3">3.5b version</button><br/>
+<img src="./IMG_1599_TINY.JPG" style="width:200px"><br/>
+
+<div id="progressbar"></div>
+<canvas id="canvas" style="display:none"></canvas>
+
+<script>
+function log(msg) {
+  console.log (msg);
+}
+
+function imgToBase64(filename, callback) {
+  var image = new Image();
+  image.src = filename;
+  image.onload = function () {
+    var canvas = $("#canvas");
+    canvas.attr ("width", image.width);
+    canvas.attr ("height", image.height);
+    var ctx = canvas[0].getContext("2d");
+    ctx.drawImage(image, 0, 0);
+    var b64 = canvas[0].toDataURL("image/jpeg");
+    callback (b64.substr(b64.indexOf(",")+1));
+  };
+}
+
+// upload callbacks
+
+function showProgress(evt) {
+  if (evt.lengthComputable) {
+    var percentComplete = ((evt.loaded/evt.total)*100).toFixed(1);
+    $('#progressbar').html (percentComplete + "%");
+  }  
+}
+
+function uploadSuccess(response) {
+  log(response);
+  $("#progressbar").hide();
+}
+
+function uploadError(response) {
+  log(response);
+  $("#progressbar").hide();
+  alert ("Upload failed");
+}
+
+// click handlers
+
+function getFile(filesIn) {
+  //Has any file been selected yet?
+  if (filesIn.files === undefined || filesIn.files.length == 0) {
+      alert("Please select a file");
+      return null;
+  }
+  return filesIn.files[0];
+}
+
+function uploadFileClick() {
+  var file = getFile ($("#fileToUpload")[0]);
+  if (file !== null) {
+    $("#progressbar").show();
+    server.uploadBlob (file.name, file, showProgress, uploadSuccess, uploadError);
+  }
+}
+
+function uploadCaptureClick() {
+  var file = getFile($("#fileToCapture")[0]);
+  if (file !== null) {
+    $("#progressbar").show();
+    server.uploadBlob (file.name, file, showProgress, uploadSuccess, uploadError);
+  }
+}
+
+function uploadImageClick() {
+  var filename = $(this).attr("filename");
+  log (filename);
+  imgToBase64(filename, function(b64) {
+    server.uploadBase64 (filename, b64, showProgress, uploadSuccess, uploadError);
+  });
+}
+
+$(function(){
+    $("#progressbar").hide();
+    $("#uploadFile").click(uploadFileClick);
+    $("#uploadCapture").click(uploadCaptureClick);
+    $("#upload1").click(uploadImageClick);
+    $("#upload2").click(uploadImageClick);
+    $("#upload3").click(uploadImageClick);
+});
+</script>
+</body>
+</html>
