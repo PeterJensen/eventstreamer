@@ -6,19 +6,19 @@ var server = function () {
   
   var uploadUrl = "../server/upload.php";
   
-  function uploadBlob (fileName, blob, progress, success, error) {
+  function uploadBlob (fileName, blob, callbacks) {
     $.ajax({
       url: uploadUrl + "?filename=" + fileName,
       type: "POST",
       data: blob,
-      success: success,
+      success: callbacks.success,
       processData: false,
       contentType: "image/jpeg",
-      error: error,
+      error: callbacks.error,
       xhr: function() {
         myXhr = $.ajaxSettings.xhr();
         if(myXhr.upload){
-          myXhr.upload.addEventListener('progress', progress, false);
+          myXhr.upload.addEventListener('progress', callbacks.progress, false);
         } else {
           console.log("Upload progress is not supported.");
         }
@@ -27,17 +27,17 @@ var server = function () {
     });
   }
   
-  function uploadBase64 (fileName, base64, progress, success, error) {
+  function uploadBase64 (fileName, base64, callbacks) {
     $.ajax({
       url: uploadUrl,
       type: "POST",
       data: {filename: fileName, filedata: base64},
-      success: success,
-      error: error,
+      success: callbacks.success,
+      error: callbacks.error,
       xhr: function() {
         myXhr = $.ajaxSettings.xhr();
         if(myXhr.upload){
-          myXhr.upload.addEventListener('progress', progress, false);
+          myXhr.upload.addEventListener('progress', callbacks.progress, false);
         } else {
           console.log("Upload progress is not supported.");
         }
