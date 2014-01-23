@@ -24,7 +24,11 @@ app.controller('EventsListController', [ '$scope', function ($scope) {
     ];
 
     $scope.onRefresh = function () {
-        console.log('refreshing');
+        console.log('refreshing. will fake complete in 3 secs');
+        setTimeout(function () {
+            $scope.$broadcast('scroll.refreshComplete');
+            console.log('refresh complete');
+        }, 3000);
     }
 }]);
 
