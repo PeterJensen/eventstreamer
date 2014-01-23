@@ -94,6 +94,7 @@ function uploadCaptureClick() {
 function uploadImageClick() {
   var filename = $(this).attr("filename");
   log (filename);
+  $("#progressbar").show();
   imgToBase64(filename, function(b64) {
     server.uploadBase64 (filename, b64, showProgress, uploadSuccess, uploadError);
   });
