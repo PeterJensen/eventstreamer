@@ -9,3 +9,8 @@
  
 We’ll need a server side service to keep track of the events people are posting images for and for the images themselves.
 
+## Design Doodles
+
+### Design meeting 2013-01-14
+
+![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152038.jpg "Image 1")
