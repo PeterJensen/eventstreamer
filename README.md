@@ -13,8 +13,10 @@ We’ll need a server side service to keep track of the events people are postin
 
 ### Design meeting 2013-01-14
 
+Participants: Girish, Dean, Stephan, Peter
+
 ![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152038.jpg "Image 1")
-![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152046.jpg "Image 1")
-![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152057.jpg "Image 1")
-![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152103.jpg "Image 1")
-![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152108.jpg "Image 1")
+![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152046.jpg "Image 2")
+![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152057.jpg "Image 3")
+![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152103.jpg "Image 4")
+![alt text](https://github.com/PeterJensen/eventstreamer/raw/master/design/IMG_20140114_152108.jpg "Image 5")
