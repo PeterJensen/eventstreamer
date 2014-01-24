@@ -1,3 +1,5 @@
+'use strict';
+
 var app = angular.module('eventStream', [ 'ionic', 'ngRoute' ]);
 
 app.config(['$routeProvider', function ($routeProvider) {
