@@ -64,6 +64,12 @@ function uploadError(response) {
   alert ("Upload failed");
 }
 
+var uploadCallbacks = {
+  success: uploadSuccess,
+  error:   uploadError,
+  progress: showProgress
+};
+
 // click handlers
 
 function getFile(filesIn) {
@@ -79,7 +85,7 @@ function uploadFileClick() {
   var file = getFile ($("#fileToUpload")[0]);
   if (file !== null) {
     $("#progressbar").show();
-    server.uploadBlob (file.name, file, showProgress, uploadSuccess, uploadError);
+    server.uploadBlob (file.name, file, uploadCallbacks);
   }
 }
 
@@ -87,7 +93,7 @@ function uploadCaptureClick() {
   var file = getFile($("#fileToCapture")[0]);
   if (file !== null) {
     $("#progressbar").show();
-    server.uploadBlob (file.name, file, showProgress, uploadSuccess, uploadError);
+    server.uploadBlob (file.name, file, uploadCallbacks);
   }
 }
 
@@ -96,17 +102,17 @@ function uploadImageClick() {
   log (filename);
   $("#progressbar").show();
   imgToBase64(filename, function(b64) {
-    server.uploadBase64 (filename, b64, showProgress, uploadSuccess, uploadError);
+    server.uploadBase64 (filename, b64, uploadCallbacks);
   });
 }
 
 $(function(){
-    $("#progressbar").hide();
-    $("#uploadFile").click(uploadFileClick);
-    $("#uploadCapture").click(uploadCaptureClick);
-    $("#upload1").click(uploadImageClick);
-    $("#upload2").click(uploadImageClick);
-    $("#upload3").click(uploadImageClick);
+  $("#progressbar").hide();
+  $("#uploadFile").click(uploadFileClick);
+  $("#uploadCapture").click(uploadCaptureClick);
+  $("#upload1").click(uploadImageClick);
+  $("#upload2").click(uploadImageClick);
+  $("#upload3").click(uploadImageClick);
 });
 </script>
 </body>
