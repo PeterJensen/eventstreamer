@@ -57,7 +57,7 @@ app.controller('EventsListController', [ '$scope', '$location', 'eventService', 
     };
 }]);
 
-app.controller('EventStreamController', [ '$scope', '$routeParams', 'eventService', function ($scope, $routeParams, eventService) {
+app.controller('EventStreamController', [ '$scope', '$routeParams', 'eventService', '$window', function ($scope, $routeParams, eventService, $window) {
     console.log('will show the event id: ', $routeParams.eventId);
     $scope.event = eventService.eventById($routeParams.eventId);
 
@@ -87,6 +87,10 @@ app.controller('EventStreamController', [ '$scope', '$routeParams', 'eventServic
           commentCount: 12
         }
     ];
+
+    $scope.showEvents = function () {
+         $window.history.back();
+    };
 }]);
 
 app.controller('WelcomeController', [ '$scope', '$location', function ($scope, $location) {
