@@ -1,0 +1,15 @@
+div.outer {
+  display: table-cell;
+  width: 500px;
+  height: 500px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+div.inner {
+  display: inline-block;
+  width: 200px;
+  height: 200px;
+  text-align: left;
+}
+

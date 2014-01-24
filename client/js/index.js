@@ -2,6 +2,10 @@ var app = angular.module('eventStream', [ 'ionic', 'ngRoute' ]);
 
 app.config(['$routeProvider', function ($routeProvider) {
     $routeProvider
+        .when('/welcome', {
+            templateUrl: 'partials/welcome.html',
+            controller: 'WelcomeController'
+        })
         .when('/events', {
             templateUrl: 'partials/events.html',
             controller: 'EventsListController'
@@ -11,7 +15,7 @@ app.config(['$routeProvider', function ($routeProvider) {
             controller: 'EventStreamController'
         })
         .otherwise({
-            redirectTo: '/events'
+            redirectTo: '/welcome'
         });
 }]);
 
@@ -33,5 +37,18 @@ app.controller('EventsListController', [ '$scope', function ($scope) {
 }]);
 
 app.controller('EventStreamController', [ '$scope', function ($scope) {
+}]);
+
+app.controller('WelcomeController', [ '$scope', '$location', function ($scope, $location) {
+    var user = JSON.parse(localStorage.getItem('user'));
+    if (!user) user = { name: 'Anonymous' };
+
+    $scope.user = user;
+
+    $scope.setUsername = function () {
+        console.log('will set the username to ', $scope.user.name);
+        localStorage.setItem('user', JSON.stringify(user));
+        $location.path('/events');
+    };
 }]);
 
