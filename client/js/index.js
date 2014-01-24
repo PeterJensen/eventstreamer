@@ -6,10 +6,19 @@ app.service('eventService', function () {
     console.log('eventService initialized');
     this.events = [
         { id: 'Event1', name: 'Foodies', description: 'Food anonymous', logo: 'images/food.png', location: 'SF' },
-        { id: 'Event1', name: 'Choo choo', description: 'We love trains', logo: 'images/train.png', location: 'SC' },
-        { id: 'Event1', name: 'Baby', description: 'Cribbing together since 1990', logo: 'images/babysitter.png', location: 'LA' },
-        { id: 'Event1', name: 'Bronto club', description: 'It\'s a lie, they aren\'t extinct', logo: 'images/brontosaurus.png' }
+        { id: 'Event2', name: 'Choo choo', description: 'We love trains', logo: 'images/train.png', location: 'SC' },
+        { id: 'Event3', name: 'Baby', description: 'Cribbing together since 1990', logo: 'images/babysitter.png', location: 'LA' },
+        { id: 'Event:', name: 'Bronto club', description: 'It\'s a lie, they aren\'t extinct', logo: 'images/brontosaurus.png' }
     ];
+
+    var that = this;
+    this.eventById = function (id) {
+        for (var i = 0; i < that.events.length; i++) {
+            if (that.events[i].id === id) {
+                return that.events[i];
+            }
+        }
+    };
 });
 
 app.config(['$routeProvider', function ($routeProvider) {
@@ -48,8 +57,10 @@ app.controller('EventsListController', [ '$scope', '$location', 'eventService', 
     };
 }]);
 
-app.controller('EventStreamController', [ '$scope', '$routeParams', function ($scope, $routeParams) {
+app.controller('EventStreamController', [ '$scope', '$routeParams', 'eventService', function ($scope, $routeParams, eventService) {
     console.log('will show the event id: ', $routeParams.eventId);
+    $scope.event = eventService.eventById($routeParams.eventId);
+
     $scope.items = [
         { authorName: 'Girish',
           postDate: 'Sometime back',
