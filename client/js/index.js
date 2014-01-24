@@ -2,6 +2,16 @@
 
 var app = angular.module('eventStream', [ 'ionic', 'ngRoute' ]);
 
+app.service('eventService', function () {
+    console.log('eventService initialized');
+    this.events = [
+        { id: 'Event1', name: 'Foodies', description: 'Food anonymous', logo: 'images/food.png', location: 'SF' },
+        { id: 'Event1', name: 'Choo choo', description: 'We love trains', logo: 'images/train.png', location: 'SC' },
+        { id: 'Event1', name: 'Baby', description: 'Cribbing together since 1990', logo: 'images/babysitter.png', location: 'LA' },
+        { id: 'Event1', name: 'Bronto club', description: 'It\'s a lie, they aren\'t extinct', logo: 'images/brontosaurus.png' }
+    ];
+});
+
 app.config(['$routeProvider', function ($routeProvider) {
     $routeProvider
         .when('/welcome', {
@@ -21,13 +31,8 @@ app.config(['$routeProvider', function ($routeProvider) {
         });
 }]);
 
-app.controller('EventsListController', [ '$scope', '$location', function ($scope, $location) {
-    $scope.events = [
-        { id: 'Event1', name: 'Foodies', description: 'Food anonymous', logo: 'images/food.png', location: 'SF' },
-        { id: 'Event1', name: 'Choo choo', description: 'We love trains', logo: 'images/train.png', location: 'SC' },
-        { id: 'Event1', name: 'Baby', description: 'Cribbing together since 1990', logo: 'images/babysitter.png', location: 'LA' },
-        { id: 'Event1', name: 'Bronto club', description: 'It\'s a lie, they aren\'t extinct', logo: 'images/brontosaurus.png' }
-    ];
+app.controller('EventsListController', [ '$scope', '$location', 'eventService', function ($scope, $location, eventService) {
+    $scope.events = eventService.events;
 
     $scope.onRefresh = function () {
         console.log('refreshing. will fake complete in 3 secs');
