@@ -19,12 +19,22 @@ var server = function () {
     errorCallback: null
   };
 
+  // enumeration of all server actions
+
+  var actions = {
+    uploadBlob:       "uploadBlob",
+    uploadBase64:     "uploadBase64",
+    getEventsCloseBy: "getEventsCloseBy",
+    getAllEvents:     "getAllEvents",
+    createEvent:      "createEvent"
+  };
+
   // private functions
 
   function errorLog(msg) {
-    console.log ("server.js ERROR: " + msg);
+    console.log ("ERROR(server.js): " + msg);
   }
-  state.errorCallback = errorLog;
+  setErrorCallback(errorLog);
 
   function checkEventState() {
     if (state.eventName === null) {
@@ -45,8 +55,10 @@ var server = function () {
                 "?action=" + action +
                 "&eventName=" + state.eventName +
                 "&userName=" + state.userName;
-    for (key in extras) {
-      url += "&" + key + "=" + extras[key];
+    if (typeof extras !== "undefined") {
+      for (key in extras) {
+        url += "&" + key + "=" + extras[key];
+      }
     }
     return url;
   }
@@ -54,8 +66,10 @@ var server = function () {
   function makeBaseUrl(action, extras) {
     var url = config.serverUrl + 
                 "?action=" + action +
-    for (key in extras) {
-      url += "&" + key + "=" + extras[key];
+    if (typeof extras !== "undefined") {
+      for (key in extras) {
+        url += "&" + key + "=" + extras[key];
+      }
     }
     return url;
   }
@@ -80,7 +94,7 @@ var server = function () {
       return;
     }
     $.ajax({
-      url: makeEventUserUrl("uploadBlob", {fileName: fileName}),
+      url: makeEventUserUrl(actions.uploadBlob, {fileName: fileName}),
       type: "POST",
       data: blob,
       success: callbacks.success,
@@ -104,7 +118,7 @@ var server = function () {
       return;
     }
     $.ajax({
-      url: makeEventUserUrl("uploadBase64", {fileName: fileName}),
+      url: makeEventUserUrl(actions.uploadBase64),
       type: "POST",
       data: {filename: fileName, filedata: base64},
       success: callbacks.success,
@@ -121,10 +135,11 @@ var server = function () {
     });
   }
 
-  function getEventsCloseBy(location, callbacks) {
+  function getEventsCloseBy(position, callbacks) {
     $.ajax({
-      url: makeBaseUrl("getEventsCloseBy", {location: location}),
-      type: "GET",
+      url: makeBaseUrl(actions.getEventsCloseBy),
+      type: "POST",
+      data: {position: JSON.stringify(position)},
       success: callbacks.success,
       error:   callbacks.error
     });
@@ -132,7 +147,7 @@ var server = function () {
 
   function getAllEvents(callbacks) {
     $.ajax({
-      url: makeBaseUrl("getAllEvent", {});
+      url: makeBaseUrl(actions.getAllEvents);
       type: "GET",
       success: callbacks.success,
       error:   callbacks.error
