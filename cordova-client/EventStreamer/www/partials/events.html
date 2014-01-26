@@ -14,7 +14,7 @@
         <div class="list">
   
             <a ng-repeat="event in events" 
-               href="#/{{event.id}}"
+               ng-click="showEvent(event.id)"
                class="item item-thumbnail-left">
                
               <img ng-src="{{ event.logo }}">

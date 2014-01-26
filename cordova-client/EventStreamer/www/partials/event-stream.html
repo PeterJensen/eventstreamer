@@ -1,0 +1,56 @@
+<div class="bar bar-header bar-positive">
+  <button class="button icon ion-arrow-left-a" ng-click="showEvents()"></button>
+  <h1 class="title">{{event.name}}</h1>
+</div>
+
+<content
+    has-header="true"
+    has-footer="true"
+    scroll="true"
+    on-refresh="onRefresh()">
+
+    <div ng-repeat="item in items" class="list card">
+
+      <div class="item item-avatar">
+        <img ng-src="{{item.authorAvatar}}">
+        <h2>{{item.authorName}}</h2>
+        <p>{{item.postDate}}</p>
+      </div>
+
+      <div class="item item-body">
+        <img class="full-image" ng-src="{{item.content}}">
+        <p>
+          {{item.description}}
+        </p>
+        <p>
+          <a href="#" class="subdued">{{item.likeCount}} Likes</a>
+          <a href="#" class="subdued">{{item.commentCount}} Comments</a>
+        </p>
+      </div>
+
+      <div class="item tabs tabs-secondary tabs-icon-left">
+        <a class="tab-item" href="#">
+          <i class="icon ion-thumbsup"></i>
+          Like
+        </a>
+        <a class="tab-item" href="#">
+          <i class="icon ion-chatbox"></i>
+          Comment
+        </a>
+        <a class="tab-item" href="#">
+          <i class="icon ion-share"></i>
+          Share
+        </a>
+      </div>
+
+    </div>
+</content>
+
+<div class="bar bar-footer bar-energized">
+  <div class="title">
+      <a class="tab-item" href="#">
+          <i class="icon ion-camera"></i>
+      </a>
+  </div>
+</div>
+

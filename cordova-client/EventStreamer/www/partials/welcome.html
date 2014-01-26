@@ -1,0 +1,24 @@
+<div>
+    <link rel="stylesheet" href="css/welcome.css">
+    <header class="bar bar-header bar-positive">
+        <h1 class="title">Welcome to Event Streamer</h1>
+    </header>
+  
+    <content
+          has-header="true">
+
+        <div class="outer">
+            <div class="inner">
+                <label class="item item-input item-stacked-label">
+                    <span class="input-label">Choose a Nickname</span>
+                    <input type="text" placeholder="Anonymous" ng-model="user.name">
+                </label>
+
+                <button class="button button-block button-positive" ng-click="setUsername()">
+                    Get Started!
+                </button>
+            </div>
+        </div>
+    </content>
+
+</div>
