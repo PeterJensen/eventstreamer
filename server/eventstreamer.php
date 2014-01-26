@@ -4,9 +4,24 @@
 // --------------------
 
 class CConfig {
-  const ROOT       = "http://www.danishdude.com/eventstreamer";
   const EVENTS_DIR = "events";
-  const FORM_NAME  = "eventImage";
+}
+
+// Client JavaScript data types
+
+class CGetParamKeys {
+  const action    = "action";
+  const eventName = "eventName";
+  const userName  = "userName";
+  const fileName  = "fileName";
+}
+
+class CActions {
+  const uploadBlob       = "uploadBlob";
+  const uploadBase64     = "uploadBase64";
+  const getEventsCloseBy = "getEventsCloseBy";
+  const getAllEvents     = "getAllEvents";
+  const createEvent      = "createEvent";
 }
 
 class CEvents {
@@ -16,7 +31,7 @@ class CEvents {
 class CEvent {
   public $name;
   public $dir;
-  public $dateCreated;
+  public $timeStamp;
   public $images;
 }
 
@@ -34,115 +49,134 @@ class CEventNames {
   public $eventNames;
 }
 
-class CParams {
-  public $action; // upload, showEvents, getEvent
-  public $uploadFile;
-  public $event;
-  public $success;
-  public $message;
+class CGetParamValues {
+  public $action    = null;
+  public $eventName = null;
+  public $userName  = null;
+  public $fileName  = null;
 
-  private function parseParams () {
-    if (!isset($_GET["action"])) {
-      $this->message = "?action not specified";
-      $this->success = false;
-      return;
+  private static function paramValue($key) {
+    if (!isset($_GET[$key])) {
+      return null;
     }
-    $this->action = $_GET["action"];
-    switch ($this->action) {
-      case "upload":
-        if (!isset($_GET["event"])) {
-          $this->message = "?event not specified";
-          $this->success = false;
-          return;
-        }
-        $this->event = $_GET["event"];
-        if (!isset($_FILES[CConfig::FORM_NAME])) {
-          $this->message = "upload file not available";
-          $this->success = false;
-          return;
-        }
-        $this->uploadFile = $_FILES[CConfig::FORM_NAME];
-        break;
-          
-      case "showEvents":
-      case "getEvent":
-      default:
-        $this->message = "Unknown action '$this->action' specified";
-        $this->success = false;
-        return;
-    }
-    $this->success = true;
+    return $_GET[$key];
   }
   
-  public function __construct () {
+  private function parseParams() {
+    $this->action    = self::paramValue(CGetParamKeys::action);
+    $this->eventName = self::paramValue(CGetParamKeys::eventName);
+    $this->userName  = self::paramValue(CGetParamKeys::userName);
+    $this->fileName  = self::paramValue(CGetParamKeys::fileName);
+  }
+  
+  public function __construct() {
     $this->parseParams();
   }
+}
+
+class CPostParamValues {
+  public $payload = null;
   
+  private static function paramValue($key) {
+    if (!isset($_POST[$key])) {
+      return null;
+    }
+    return $_POST[$key];
+  }
+  
+  private function parseParams() {
+    $this->payload = self::paramValue("payload");
+  }
+  
+  public function __construct() {
+    $this->parseParams();
+  }
 }
 
 class CResponse {
   public $status;
-  public $message;
+  public $errorMessage;
   public $payload;
   
   public function __construct() {
-    $this->status  = "No response";
-    $this->message = "";
-    $this->payload = null;
+    $this->status       = "No response";
+    $this->errorMessage = "";
+    $this->payload      = null;
   }
   
   public function success($payload) {
-    $this->status  = "Success";
-    $this->message = "";
-    $this->payload = $payload;
+    $this->status       = "Success";
+    $this->errorMessage = "";
+    $this->payload      = $payload;
   }
   
   public function fail($failReason) {
-    $this->status = "Fail";
-    $this->message = $failReason;
+    $this->status       = "Fail";
+    $this->errorMessage = $failReason;
   }
   
   public function toJson() {
     return json_encode($this);
   }
-  
 }
 
 class CEventDb {
 
-  public static function saveImage(&$response, $params) {
-    $response->fail ("Uploading not implemented yet");
+  public static function uploadBlob(&$response, $getParams) {
+    $response->fail("saveBlob not implemented yet");
   }
   
-  public static function eventNames(&$response, $params) {
-    $response->fail ("Showing events not implemented yet");
+  public static function uploadBase64(&$response, $getParams) {
+    $response->fail("saveBase64 not implemented yet");
   }
   
-  public static function getEvent(&$response, $params) {
-    $response->fail ("Retrieving event not implemented yet");
+  public static function getEventsCloseBy(&$response, $getParams) {
+    $response->fail("getEventsCloseBy not implemented yet");
   }
-  
+
+  public static function getAllEvents(&$response, $getParams) {
+    $response->fail("getAllEvents not implemented yet");
+  }
+
+  public static function createEvent(&$response, $getParams) {
+    if ($getParams->userName === null) {
+      $response->fail("userName not specified");
+      return;
+    }
+    $postParams = new CPostParamValues();
+    if ($postParams->payload === null) {
+      $response->fail("payload not specified");
+      return;
+    }
+    $requestPayload  = json_decode($postParams->payload);
+    $responsePayload = $requestPayload;
+    $response->success($responsePayload);
+  }
 }
 
 function main() {
-  $params   = new CParams();
-  $response = new CResponse();
+  $getParams = new CGetParamValues();
+  $response  = new CResponse();
   
-  if (!$params->success) {
-    $response->fail($params->message);
-  }
-  else {
-    switch ($params->action) {
-      case "upload":
-        CEventDb::saveImage($response, $params);
-        break;
-      case "showEvents":
-        CEventDb::eventNames($response, $params);
-        break;
-      case "getEvent":
-        CEventDb::getEvent($response, $params);
-        break;
-    }
+  switch ($getParams->action) {
+    case CActions::uploadBlob:
+      CEventDb::uploadBlob($response, $getParams);
+      break;
+    case CActions::uploadBase64:
+      CEventDb::uploadBase64($response, $getParams);
+      break;
+    case CActions::getEventsCloseBy:
+      CEventDb::getEventsCloseBy($response, $getParams);
+      break;
+    case CActions::getAllEvents:
+      CEventDb::getAllEvents($response, $getParams);
+      break;
+    case CActions::createEvent:
+      CEventDb::createEvent($response, $getParams);
+      break;
+    default:
+      $response->fail("Unknown action: $getParams->action");
+      break;
   }
   echo $response->toJson();
 }

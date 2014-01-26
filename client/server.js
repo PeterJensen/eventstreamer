@@ -10,11 +10,24 @@ var server = function () {
     serverUrl: "../server/eventstreamer.php"
   };
 
+  // interface types
+  
+  function Position(lat, lon) {
+    this.lat = lat;
+    this.lon = lon;
+  }
+
+  function Event(name, position) {
+    this.name      = name;
+    this.position  = position;
+    this.timestamp = Date.now();
+    this.createBy  = state.userName;
+  }
+  
   // state data
 
   var state = {
-    eventName:     null,
-    eventLocation: null,
+    event:         null,
     userName:      null,
     errorCallback: null
   };
@@ -41,6 +54,7 @@ var server = function () {
       state.errorCallback("No event name has been established.  Call server.setEvent() first");
       return false;
     }
+    return true;
   }
 
   function checkUserState() {
@@ -48,13 +62,11 @@ var server = function () {
       state.errorCallback("No user name has been established.  Call server.setUser() first");
       return false;
     }
+    return true;
   }
 
-  function makeEventUserUrl(action, extras) {
-    var url = config.serverUrl + 
-                "?action=" + action +
-                "&eventName=" + state.eventName +
-                "&userName=" + state.userName;
+  function makeExtras(extras) {
+    var url = "";
     if (typeof extras !== "undefined") {
       for (key in extras) {
         url += "&" + key + "=" + extras[key];
@@ -62,23 +74,32 @@ var server = function () {
     }
     return url;
   }
-
+    
   function makeBaseUrl(action, extras) {
-    var url = config.serverUrl + 
-                "?action=" + action +
-    if (typeof extras !== "undefined") {
-      for (key in extras) {
-        url += "&" + key + "=" + extras[key];
-      }
-    }
-    return url;
+    return config.serverUrl + 
+             "?action=" + action +
+              makeExtras(extras);
+  }
+
+  function makeUserUrl(action, extras) {
+    return config.serverUrl + 
+             "?action=" + action +
+             "&userName=" + state.userName +
+             makeExtras(extras);
+  }
+  
+  function makeEventUserUrl(action, extras) {
+    return config.serverUrl + 
+             "?action=" + action +
+             "&eventName=" + state.eventName +
+             "&userName=" + state.userName +
+             makeExtras(extras);
   }
 
   // exported functions
 
-  function setEvent(eventName, eventLocation) {
-    state.eventName     = eventName;
-    state.eventLocation = eventLocation;
+  function setEvent(event) {
+    state.event = event;
   }
 
   function setUser(userName) {
@@ -120,7 +141,7 @@ var server = function () {
     $.ajax({
       url: makeEventUserUrl(actions.uploadBase64),
       type: "POST",
-      data: {filename: fileName, filedata: base64},
+      data: {payload: JSON.stringify({filename: fileName, filedata: base64})},
       success: callbacks.success,
       error: callbacks.error,
       xhr: function() {
@@ -139,7 +160,7 @@ var server = function () {
     $.ajax({
       url: makeBaseUrl(actions.getEventsCloseBy),
       type: "POST",
-      data: {position: JSON.stringify(position)},
+      data: {payload: JSON.stringify(position)},
       success: callbacks.success,
       error:   callbacks.error
     });
@@ -147,24 +168,29 @@ var server = function () {
 
   function getAllEvents(callbacks) {
     $.ajax({
-      url: makeBaseUrl(actions.getAllEvents);
-      type: "GET",
+      url:     makeBaseUrl(actions.getAllEvents),
+      type:    "GET",
       success: callbacks.success,
       error:   callbacks.error
     });
   }
 
   function createEvent(event, callbacks) {
-    if (!checkuserState()) {
+    if (!checkUserState()) {
       return;
     }
-//
-//    $.ajax({
-//      url: makeBaseUrl("createEvent", {userName: state.userName, event: event}
-//  }
+    $.ajax({
+      url:     makeUserUrl(actions.createEvent),
+      type:    "POST",
+      data:    {payload: JSON.stringify(event)},
+      success: callbacks.success,
+      error:   callbacks.error
+    });
   }
 
   return {
+    Position:         Position,
+    Event:            Event,
     setEvent:         setEvent,
     setUser:          setUser,
     setErrorCallback: setErrorCallback,
