@@ -17,11 +17,14 @@ var server = function () {
     this.lon = lon;
   }
 
-  function Event(name, position) {
-    this.name      = name;
-    this.position  = position;
-    this.timestamp = Date.now();
-    this.createBy  = state.userName;
+  function Event(name, description, position) {
+    this.name        = name;     // String
+    this.position    = position; // a Position object
+    this.description = description;
+    this.timestamp   = Date.now();
+    this.createdBy   = state.userName;
+    this.id          = null; // will be filled in by the server
+    this.dir         = null; // will be filled in by the server
   }
   
   // state data
@@ -183,6 +186,7 @@ var server = function () {
       url:     makeUserUrl(actions.createEvent),
       type:    "POST",
       data:    {payload: JSON.stringify(event)},
+      dataType: "json",
       success: callbacks.success,
       error:   callbacks.error
     });

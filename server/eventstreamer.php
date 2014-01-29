@@ -4,10 +4,11 @@
 // --------------------
 
 class CConfig {
-  const EVENTS_DIR = "events";
+  const eventsDir         = "./events";
+  const eventJsonFileName = "event.json";
 }
 
-// Client JavaScript data types
+// Client REST API types and constants
 
 class CGetParamKeys {
   const action    = "action";
@@ -22,6 +23,23 @@ class CActions {
   const getEventsCloseBy = "getEventsCloseBy";
   const getAllEvents     = "getAllEvents";
   const createEvent      = "createEvent";
+}
+
+// Matches for JS object types
+
+class CJsPosition {
+  public $lat;
+  public $lon;
+}
+
+class CJsEvent {
+  public $name;
+  public $position;
+  public $description;
+  public $timestamp;
+  public $createdBy;
+  public $id;
+  public $dir;
 }
 
 class CEvents {
@@ -93,6 +111,16 @@ class CPostParamValues {
   }
 }
 
+class CRequestParams {
+  public $get;
+  public $post;
+  
+  public function __construct() {
+    $this->get  = new CGetParamValues();
+    $this->post = new CPostParamValues();
+  }
+}
+
 class CResponse {
   public $status;
   public $errorMessage;
@@ -120,62 +148,125 @@ class CResponse {
   }
 }
 
+class CStatus {
+  public $success;
+  public $errorMessage;
+}
+
 class CEventDb {
 
-  public static function uploadBlob(&$response, $getParams) {
+  private static function createEventId($event) {
+    $id = "";
+    $name = $event->name;
+    for ($i = 0; $i < strlen($name); ++$i) {
+      $c = $name{$i};
+      if (($c >= 'A' && $c <= 'Z') ||
+          ($c >= 'a' && $c <= 'z') ||
+          ($c >= '0' && $c <= '9')) {
+        $id .= $c;
+      }
+    }
+    return $id;
+  }
+
+  private static function createEventDir($event, &$status) {
+    // Check if directory already exists
+    $eventDir = CConfig::eventsDir . "/" . $event->id;
+    if (is_dir($eventDir)) {
+      $status->success = false;
+      $status->errorMessage = "$event->name already exists";
+      return null;
+    }
+    if (!@mkdir($eventDir)) {
+      $status->success = false;
+      $status->errorMessage = "Cannot create event directory: $eventDir";
+      return null;
+    }
+    return $eventDir;
+  }
+  
+  public static function createEvent(&$event, &$status) {
+    $status->success = true;  // assume event creation will succeed
+    
+    // Create an event id
+    $event->id = self::createEventId($event);
+
+    // Create the event dir
+    $event->dir = self::createEventDir($event, $status);
+    if (!$status->success) {
+      return;
+    }
+    
+    // Create the event JSON file
+    $eventJsonFile = $event->dir . "/" . CConfig::eventJsonFileName;
+    $ret = @file_put_contents($eventJsonFile, json_encode($event));
+    if ($ret === false) {
+      $status->success = false;
+      $status->errorMessage = "Cannot create event json file: $eventJsonFile";
+    }
+  }
+}
+
+class CActionHandlers {
+
+  public static function uploadBlob(&$response, $request) {
     $response->fail("saveBlob not implemented yet");
   }
   
-  public static function uploadBase64(&$response, $getParams) {
+  public static function uploadBase64(&$response, $request) {
     $response->fail("saveBase64 not implemented yet");
   }
   
-  public static function getEventsCloseBy(&$response, $getParams) {
+  public static function getEventsCloseBy(&$response, $request) {
     $response->fail("getEventsCloseBy not implemented yet");
   }
 
-  public static function getAllEvents(&$response, $getParams) {
+  public static function getAllEvents(&$response, $request) {
     $response->fail("getAllEvents not implemented yet");
   }
 
-  public static function createEvent(&$response, $getParams) {
-    if ($getParams->userName === null) {
+  public static function createEvent(&$response, $request) {
+    if ($request->get->userName === null) {
       $response->fail("userName not specified");
       return;
     }
-    $postParams = new CPostParamValues();
-    if ($postParams->payload === null) {
+    if ($request->post->payload === null) {
       $response->fail("payload not specified");
       return;
     }
-    $requestPayload  = json_decode($postParams->payload);
-    $responsePayload = $requestPayload;
-    $response->success($responsePayload);
+    $event  = json_decode($request->post->payload);
+    $status = new CStatus();
+    CEventDb::createEvent($event, $status);
+    if (!$status->success) {
+      $response->fail($status->errorMessage);
+      return;
+    }
+    $response->success($event);
   }
 }
 
 function main() {
-  $getParams = new CGetParamValues();
+  $request   = new CRequestParams();
   $response  = new CResponse();
   
-  switch ($getParams->action) {
+  switch ($request->get->action) {
     case CActions::uploadBlob:
-      CEventDb::uploadBlob($response, $getParams);
+      CActionHandlers::uploadBlob($response, $request);
       break;
     case CActions::uploadBase64:
-      CEventDb::uploadBase64($response, $getParams);
+      CActionHandlers::uploadBase64($response, $request);
       break;
     case CActions::getEventsCloseBy:
-      CEventDb::getEventsCloseBy($response, $getParams);
+      CActionHandlers::getEventsCloseBy($response, $request);
       break;
     case CActions::getAllEvents:
-      CEventDb::getAllEvents($response, $getParams);
+      CActionHandlers::getAllEvents($response, $request);
       break;
     case CActions::createEvent:
-      CEventDb::createEvent($response, $getParams);
+      CActionHandlers::createEvent($response, $request);
       break;
     default:
-      $response->fail("Unknown action: $getParams->action");
+      $response->fail("Unknown action: $request->get->action");
       break;
   }
   echo $response->toJson();
