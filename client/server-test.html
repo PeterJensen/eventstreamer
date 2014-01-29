@@ -1,0 +1,34 @@
+<!DOCTYPE>
+<html>
+
+<body>
+<button id="createEvent">Create Event</button>
+<script src="./jquery-1.10.2.js"></script>
+<script src="./server.js"></script>
+<script>
+function log(msg) {
+  console.log(msg);
+}
+
+function createEventSuccess(response) {
+  log(response);
+}
+
+function createEventError(response) {
+  log(response);
+}
+
+function createEventClick() {
+  server.setUser("Test User");
+  var pos       = new server.Position(10.2, 12.3);
+  var event     = new server.Event("Test Event 2", "This is just a simple test event", pos);
+  var callbacks = {success: createEventSuccess, error: createEventError};
+  server.createEvent(event, callbacks);
+}
+
+$(function() {
+  $("#createEvent").click(createEventClick);
+});
+</script>
+</body>
+</html>
