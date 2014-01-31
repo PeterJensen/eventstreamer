@@ -17,10 +17,11 @@ var server = function () {
     this.lon = lon;
   }
 
-  function Event(name, description, position) {
+  function Event(name, description, position, base64Image) {
     this.name        = name;     // String
-    this.position    = position; // a Position object
     this.description = description;
+    this.position    = position; // a Position object
+    this.base64Image = base64Image;
     this.timestamp   = Date.now();
     this.createdBy   = state.userName;
     this.id          = null; // will be filled in by the server
@@ -99,6 +100,43 @@ var server = function () {
              makeExtras(extras);
   }
 
+  function makeProgressXhr(callback) {
+    return function () {
+      var myXhr = $.ajaxSettings.xhr();
+      if (myXhr.upload) {
+        myXhr.upload.addEventListener('progress', callback, false);
+      }
+      else {
+        state.errorCallback("Upload progress is not supported.");
+      }
+      return myXhr;
+    }
+  }
+
+  function makeAjaxPostRequest(url, payload, callbacks) {
+    if (typeof callbacks.progress === "undefined") {
+      $.ajax({
+        url:       url,
+        type:      "POST",
+        data:      {payload: JSON.stringify(payload)},
+        dataType:  "json",
+        success:   callbacks.success,
+        error:     callbacks.error
+      });
+    }
+    else {
+      $.ajax({
+        url:       url,
+        type:      "POST",
+        data:      {payload: JSON.stringify(payload)},
+        dataType:  "json",
+        success:   callbacks.success,
+        error:     callbacks.error,
+        xhr:       makeProgressXhr (callbacks.progress)
+      });
+    }
+  }
+
   // exported functions
 
   function setEvent(event) {
@@ -118,22 +156,14 @@ var server = function () {
       return;
     }
     $.ajax({
-      url: makeEventUserUrl(actions.uploadBlob, {fileName: fileName}),
-      type: "POST",
-      data: blob,
-      success: callbacks.success,
+      url:         makeEventUserUrl(actions.uploadBlob, {fileName: fileName}),
+      type:        "POST",
+      data:        blob,
+      success:     callbacks.success,
       processData: false,
       contentType: "image/jpeg",
-      error: callbacks.error,
-      xhr: function() {
-        myXhr = $.ajaxSettings.xhr();
-        if(myXhr.upload){
-          myXhr.upload.addEventListener('progress', callbacks.progress, false);
-        } else {
-          state.errorCallback("Upload progress is not supported.");
-        }
-        return myXhr;
-      }
+      error:       callbacks.error,
+      xhr:         makeProgressXhr (callbacks.progress)
     });
   }
   
@@ -141,55 +171,24 @@ var server = function () {
     if (!checkEventState() || !checkUserState()) {
       return;
     }
-    $.ajax({
-      url: makeEventUserUrl(actions.uploadBase64),
-      type: "POST",
-      data: {payload: JSON.stringify({filename: fileName, filedata: base64})},
-      success: callbacks.success,
-      error: callbacks.error,
-      xhr: function() {
-        myXhr = $.ajaxSettings.xhr();
-        if(myXhr.upload){
-          myXhr.upload.addEventListener('progress', callbacks.progress, false);
-        } else {
-          state.errorCallback("Upload progress is not supported.");
-        }
-        return myXhr;
-      }
-    });
+    makeAjaxPostRequest(
+      makeEventUserUrl(actions.uploadBase64),
+      {fileName: fileName, fileData: base64},
+      callbacks);
   }
 
   function getEventsCloseBy(position, callbacks) {
-    $.ajax({
-      url: makeBaseUrl(actions.getEventsCloseBy),
-      type: "POST",
-      data: {payload: JSON.stringify(position)},
-      success: callbacks.success,
-      error:   callbacks.error
-    });
+    makeAjaxPostRequest(makeBaseUrl(actions.getEventsCloseBy), position, callbacks);
   }
 
   function getAllEvents(callbacks) {
-    $.ajax({
-      url:     makeBaseUrl(actions.getAllEvents),
-      type:    "GET",
-      success: callbacks.success,
-      error:   callbacks.error
-    });
+    makeAjaxPostRequest(makeBaseUrl(actions.getAllEvents), {}, callbacks);
   }
 
   function createEvent(event, callbacks) {
-    if (!checkUserState()) {
-      return;
+    if (checkUserState()) {
+      makeAjaxPostRequest(makeUserUrl(actions.createEvent), event, callbacks);
     }
-    $.ajax({
-      url:     makeUserUrl(actions.createEvent),
-      type:    "POST",
-      data:    {payload: JSON.stringify(event)},
-      dataType: "json",
-      success: callbacks.success,
-      error:   callbacks.error
-    });
   }
 
   return {

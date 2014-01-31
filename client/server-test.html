@@ -1,11 +1,34 @@
 <!DOCTYPE>
 <html>
-
+<head>
+<style>
+#eventImage {width:120px; border:solid black 1px; min-height:90px}
+</style>
+</head>
 <body>
+<h1>Test of the server.js API</h1>
+
+<h2>Select User Name</h2>
+User Name: <input id="userName" type="text" value="Test User"/><br />
+<button id="setUser">Set User</button>
+
+<h2>Create an Event</h2>
+Event Name: <input id="eventName" type="text" value="Test Event"/><br />
+Event Description: <input id="eventDescription" type="text" value="Event Description"/> <br />
+Event Position: lat: <input id="eventPositionLat" type="text" value="37.7833"/> lon: <input id="eventPositionLon" type="text" value="122.4167"/><br />
+Event Image:<br />
+<img id="eventImage" /><input type="file" id="selectEventImage"/><br />
 <button id="createEvent">Create Event</button>
+
+
 <script src="./jquery-1.10.2.js"></script>
 <script src="./server.js"></script>
 <script>
+
+function error(msg) {
+  alert(msg);
+}
+
 function log(msg) {
   console.log(msg);
 }
@@ -18,15 +41,44 @@ function createEventError(response) {
   log(response);
 }
 
+function createEventProgress(response) {
+  log(response);
+}
+
 function createEventClick() {
-  server.setUser("Test User");
-  var pos       = new server.Position(10.2, 12.3);
-  var event     = new server.Event("Test Event 2", "This is just a simple test event", pos);
-  var callbacks = {success: createEventSuccess, error: createEventError};
+  var lat       = parseFloat($("#eventPositionLat").val());
+  var lon       = parseFloat($("#eventPositionLon").val());
+  var pos       = new server.Position(lat, lon);
+  var event     = new server.Event($("#eventName").val(), $("#eventDescription").val(), pos, $("#eventImage").attr("src"));
+  var callbacks = {success: createEventSuccess, error: createEventError, progress: createEventProgress};
   server.createEvent(event, callbacks);
 }
 
+function setUserClick() {
+  var userName = $("#userName").val();
+  if (userName === "") {
+    error("user name cannot be blank");
+  }
+  else {
+    server.setUser(userName);
+  }
+}
+
+function selectEventImageClick() {
+  var inputFiles = $("#selectEventImage")[0];
+  var file = inputFiles.files[0];
+  log ("File selected: " + file.name + ", size: " + file.size);
+  var reader = new FileReader();
+  reader.onload = function(event) {
+    $("#eventImage").attr("src", event.target.result);
+  };
+  reader.readAsDataURL (file);
+}
+
 $(function() {
+  server.setUser($("#userName").val());
+  $("#setUser").click(setUserClick);
+  $("#selectEventImage").on("change", selectEventImageClick);
   $("#createEvent").click(createEventClick);
 });
 </script>
