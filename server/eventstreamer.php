@@ -4,8 +4,14 @@
 // --------------------
 
 class CConfig {
-  const eventsDir         = "./events";
-  const eventJsonFileName = "event.json";
+  const eventsDir           = "./events";
+  const eventJsonFileName   = "event.json";
+  const eventsJsonFileName  = "events.json";
+  const eventDatFileName    = "event.txt";
+  const eventsDatFileName   = "events.txt";
+  const eventImageOriginal  = "event.jpg";
+  const eventImageThumbnail = "event-thumb.jpg";
+  const thumbnailWidth      = 120;
 }
 
 // Client REST API types and constants
@@ -18,7 +24,6 @@ class CGetParamKeys {
 }
 
 class CActions {
-  const uploadBlob       = "uploadBlob";
   const uploadBase64     = "uploadBase64";
   const getEventsCloseBy = "getEventsCloseBy";
   const getAllEvents     = "getAllEvents";
@@ -53,19 +58,17 @@ class CEvent {
   public $images;
 }
 
-class CImage {
-  public $smallImage;
-  public $mediumImage;
-  public $largeImage;
-  public $originalImage;
-  public $author;
-  public $imageTimestamp;
-  public $uploadTimestamp;
+class CGetAllEventsResponse {
+  public $events = array();
+  
+  public function addEvent($event) {
+    $this->events[] = $event;
+  }
 }
 
-class CEventNames {
-  public $eventNames;
-}
+// ---------------------------------------------------------------------------
+// Utilities for getting GET and POST request parameters
+// ---------------------------------------------------------------------------
 
 class CGetParamValues {
   public $action    = null;
@@ -153,8 +156,41 @@ class CStatus {
   public $errorMessage;
 }
 
+class CEvent {
+  public $name                = null;
+  public $description         = null;
+  public $position            = null;
+  public $timestamp           = null;
+  public $createdBy           = null;
+  public $id                  = null;
+  public $dir                 = null;
+  public $eventImageOriginal  = null;
+  public $eventImageThumbnail = null;
+  
+  public static function newFromJsEvent($jsEvent) {
+    $event = new CEvent();
+    $event->name        = $jsEvent->name;
+    $event->description = $jsEvent->description;
+    $event->position    = $jsEvent->position;
+    $event->timestamp   = $jsEvent->timestamp;
+    $event->createdBy   = $jsEvent->createdBy;
+    return $event;
+  }
+  
+  public static function newFromJson($json) {
+    // as long as there are only static methods in this class this will work
+    $event = json_decode($json);
+    return $event;
+  }
+  
+}
+
+// Database Operations
+
 class CEventDb {
 
+  // Private functions
+  
   private static function createEventId($event) {
     $id = "";
     $name = $event->name;
@@ -184,6 +220,21 @@ class CEventDb {
     }
     return $eventDir;
   }
+
+  private static function createFile($fileName, $contents, &$status) {
+    $ret = @file_put_contents($fileName, $contents);
+    if ($ret === false) {
+      $status->success = false;
+      $status->errorMessage = "Cannot create $filename";
+      return;
+    }
+  }
+  
+  private static function addEvent($event) {
+    
+  }
+  
+  // Public functions
   
   public static function createEvent(&$event, &$status) {
     $status->success = true;  // assume event creation will succeed
@@ -196,24 +247,36 @@ class CEventDb {
     if (!$status->success) {
       return;
     }
+
+    // Create the event.json file
+    self::createFile($event->dir . "/" . CConfig::eventJsonFileName, json_encode($event), $status);
+    if (!$status->success) {
+      return;
+    }
     
-    // Create the event JSON file
-    $eventJsonFile = $event->dir . "/" . CConfig::eventJsonFileName;
-    $ret = @file_put_contents($eventJsonFile, json_encode($event));
-    if ($ret === false) {
-      $status->success = false;
-      $status->errorMessage = "Cannot create event json file: $eventJsonFile";
+    // Create the event.dat file
+    self::createFile($event->dir . "/" . CConfig::eventDatFileName, serialize($event), $status);
+    if (!$status->success) {
+      return;
+    }
+
+    self::addEvent($event);
+  }
+  
+  public static function getAllEvents(&$events, &$status) {
+    $status->success = true;
+    $events = array();
+    $eventJsonFiles = self::getAllEventJsonFiles();
+    foreach ($eventJsonFiles as $file) {
+      $events[] = CEvent::newFromJson(file_get_contents($file));
     }
   }
+  
 }
 
 class CActionHandlers {
 
-  public static function uploadBlob(&$response, $request) {
-    $response->fail("saveBlob not implemented yet");
-  }
-  
-  public static function uploadBase64(&$response, $request) {
+  public static function uploadBase64($request, &$response) {
     $response->fail("saveBase64 not implemented yet");
   }
   
@@ -250,9 +313,6 @@ function main() {
   $response  = new CResponse();
   
   switch ($request->get->action) {
-    case CActions::uploadBlob:
-      CActionHandlers::uploadBlob($response, $request);
-      break;
     case CActions::uploadBase64:
       CActionHandlers::uploadBase64($response, $request);
       break;

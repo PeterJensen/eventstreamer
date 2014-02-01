@@ -38,7 +38,6 @@ var server = function () {
   // enumeration of all server actions
 
   var actions = {
-    uploadBlob:       "uploadBlob",
     uploadBase64:     "uploadBase64",
     getEventsCloseBy: "getEventsCloseBy",
     getAllEvents:     "getAllEvents",
@@ -113,30 +112,6 @@ var server = function () {
     state.errorCallback = error;
   }
   
-  function uploadBlob(fileName, blob, callbacks) {
-    if (!checkEventState() || !checkUserState()) {
-      return;
-    }
-    $.ajax({
-      url: makeEventUserUrl(actions.uploadBlob, {fileName: fileName}),
-      type: "POST",
-      data: blob,
-      success: callbacks.success,
-      processData: false,
-      contentType: "image/jpeg",
-      error: callbacks.error,
-      xhr: function() {
-        myXhr = $.ajaxSettings.xhr();
-        if(myXhr.upload){
-          myXhr.upload.addEventListener('progress', callbacks.progress, false);
-        } else {
-          state.errorCallback("Upload progress is not supported.");
-        }
-        return myXhr;
-      }
-    });
-  }
-  
   function uploadBase64(fileName, base64, callbacks) {
     if (!checkEventState() || !checkUserState()) {
       return;
@@ -201,7 +176,6 @@ var server = function () {
     getEventsCloseBy: getEventsCloseBy,
     getAllEvents:     getAllEvents,
     createEvent:      createEvent,
-    uploadBlob:       uploadBlob,
     uploadBase64:     uploadBase64
   }
   
