@@ -20,6 +20,9 @@ Event Image:<br />
 <img id="eventImage" /><input type="file" id="selectEventImage"/><br />
 <button id="createEvent">Create Event</button>
 
+<h2>Get All Events</h2>
+<button id="getAllEvents">Show all events</button>
+<div id="eventList"></div>
 
 <script src="./jquery-1.10.2.js"></script>
 <script src="./server.js"></script>
@@ -75,11 +78,53 @@ function selectEventImageClick() {
   reader.readAsDataURL (file);
 }
 
+function getAllEventsSuccess(response) {
+  $("#eventList").empty();
+  var columns = ["thumb", "Event Name", "Event Description", "Created By", "Created Time"];
+  var $table = $("<table>").attr("border", 1);
+  var $tr   = $("<tr>");
+  for (var c in columns) {
+    $tr.append($("<td>").text(columns[c]));
+  }
+  $table.append($tr);
+  var events = response.payload.events;
+  for (var i in events) {
+    var event = events[i];
+    var $tr = $("<tr>");
+    var imgFile = event.imageThumbnail;
+    if (imgFile !== null) {
+      $tr.append($("<td>").append($("<img>").attr("src", server.getFileUrl(event.dir + "/" + imgFile))));
+    }
+    else {
+      $tr.append($("<td>").text("No Image"));
+    }      
+    $tr.append($("<td>").text(event.name));
+    $tr.append($("<td>").text(event.description));
+    $tr.append($("<td>").text(event.createdBy));
+    $tr.append($("<td>").text((new Date(event.timestamp)).toISOString()));
+    $table.append($tr);
+  }
+  $("#eventList").append($table);
+  
+  var pre = $("<pre></pre>").text(JSON.stringify(response, false, 2));
+  $("#eventList").append(pre);
+}
+
+function getAllEventsError(response) {
+  log(response);
+}
+
+function getAllEventsClick() {
+  var callbacks = {success: getAllEventsSuccess, error: getAllEventsError};
+  server.getAllEvents(callbacks);
+}
+
 $(function() {
   server.setUser($("#userName").val());
   $("#setUser").click(setUserClick);
   $("#selectEventImage").on("change", selectEventImageClick);
   $("#createEvent").click(createEventClick);
+  $("#getAllEvents").click(getAllEventsClick);
 });
 </script>
 </body>

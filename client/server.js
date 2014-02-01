@@ -7,7 +7,8 @@ var server = function () {
   // configuration data
 
   var config = {
-    serverUrl: "../server/eventstreamer.php"
+    serverUrl:    "../server/eventstreamer.php",
+    serverPrefix: "../server/"
   };
 
   // interface types
@@ -21,7 +22,7 @@ var server = function () {
     this.name        = name;     // String
     this.description = description;
     this.position    = position; // a Position object
-    this.base64Image = base64Image;
+    this.base64Image = (typeof base64Image === "undefined") ? null : base64Image;
     this.timestamp   = Date.now();
     this.createdBy   = state.userName;
     this.id          = null; // will be filled in by the server
@@ -150,6 +151,10 @@ var server = function () {
     state.errorCallback = error;
   }
   
+  function getFileUrl(path) {
+    return config.serverPrefix + path;
+  }
+  
   function uploadBase64(fileName, base64, callbacks) {
     if (!checkEventState() || !checkUserState()) {
       return;
@@ -180,6 +185,7 @@ var server = function () {
     setEvent:         setEvent,
     setUser:          setUser,
     setErrorCallback: setErrorCallback,
+    getFileUrl:       getFileUrl,
     getEventsCloseBy: getEventsCloseBy,
     getAllEvents:     getAllEvents,
     createEvent:      createEvent,

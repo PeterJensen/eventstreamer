@@ -11,6 +11,7 @@ class CConfig {
   const eventsDir           = "./events";
   const eventJsonFileName   = "event.json";
   const eventDatFileName    = "event.txt";
+  const eventsJsonFileName  = "events.json";
   const eventsDatFileName   = "events.txt";
   const eventImageOriginal  = "event.jpg";
   const eventImageThumbnail = "event-thumb.jpg";
@@ -74,12 +75,9 @@ class CCreateEventResponse {
 }
 
 class CGetAllEventsResponse {
-  public $events = array();
-  
-  public function addEvent($event) {
-    $this->events[] = $event;
+  public static function newFromEvents($events) {
+    return $events;
   }
-  
 }
 
 // ---------------------------------------------------------------------------
@@ -171,10 +169,6 @@ class CResponse {
   }
 }
 
-class CEvents {
-  public $events;
-}
-
 class CImage {
   public $smallImage;
   public $mediumImage;
@@ -233,15 +227,15 @@ class CStatus {
 }
 
 class CEvent {
-  public $name                = null;
-  public $description         = null;
-  public $position            = null;
-  public $timestamp           = null;
-  public $createdBy           = null;
-  public $id                  = null;
-  public $dir                 = null;
-  public $eventImageOriginal  = null;
-  public $eventImageThumbnail = null;
+  public $name           = null;
+  public $description    = null;
+  public $position       = null;
+  public $timestamp      = null;
+  public $createdBy      = null;
+  public $id             = null;
+  public $dir            = null;
+  public $imageOriginal  = null;
+  public $imageThumbnail = null;
   
   public static function newFromJsEvent($jsEvent) {
     $event = new CEvent();
@@ -258,7 +252,23 @@ class CEvent {
     $event = json_decode($json);
     return $event;
   }
+}
+
+class CEvents {
+  public $events = array();
   
+  public static function newFromDatFile($datFileName) {
+    if (is_file($datFileName)) {
+      return unserialize(file_get_contents($datFileName));
+    }
+    else {
+      return new CEvents();
+    }
+  }
+
+  public function addEvent($event) {
+    $this->events[] = $event;
+  }
 }
 
 // Database Operations
@@ -306,10 +316,26 @@ class CEventDb {
     }
   }
   
-  private static function addEvent($event) {
-    
+  private static function createDataFiles($data, $jsonFileName, $datFileName, &$status) {
+    self::createFile($jsonFileName, json_encode($data), $status);
+    if (!$status->success) {
+      return false;
+    }
+    self::createFile($datFileName, serialize($data), $status);
+    if (!$status->success) {
+      return false;
+    }
+    return true;
   }
   
+  private static function updateAllEvents($event, &$status) {
+    $jsonFileName = CConfig::eventsDir . "/" . CConfig::eventsJsonFileName;
+    $datFileName = CConfig::eventsDir . "/" . CConfig::eventsDatFileName;
+    $events = CEvents::newFromDatFile($datFileName);
+    $events->addEvent($event);
+    self::createDataFiles($events, $jsonFileName, $datFileName, $status);
+  }
+
   // Public functions
   
   public static function createEvent(&$event, &$status) {
@@ -321,31 +347,28 @@ class CEventDb {
     // Create the event dir
     $event->dir = self::createEventDir($event, $status);
     if (!$status->success) {
-      return null;
+      return false;
     }
 
-    // Create the event.json file
-    self::createFile($event->dir . "/" . CConfig::eventJsonFileName, json_encode($event), $status);
+    // Create the event data files
+    self::createDataFiles(
+      $event,
+      $event->dir . "/" . CConfig::eventJsonFileName,
+      $event->dir . "/" . CConfig::eventDatFileName,
+      $status);
     if (!$status->success) {
-      return;
-    }
-    
-    // Create the event.dat file
-    self::createFile($event->dir . "/" . CConfig::eventDatFileName, serialize($event), $status);
-    if (!$status->success) {
-      return;
+      return false;
     }
 
-    self::addEvent($event);
+    self::updateAllEvents($event, $status);
+    if (!$status->success) {
+      return false;
+    }
+    return true;
   }
   
   public static function getAllEvents(&$events, &$status) {
-    $status->success = true;
-    $events = array();
-    $eventJsonFiles = self::getAllEventJsonFiles();
-    foreach ($eventJsonFiles as $file) {
-      $events[] = CEvent::newFromJson(file_get_contents($file));
-    }
+    $events = CEvents::newFromDatFile(CConfig::eventsDir . "/" . CConfig::eventsDatFileName);
   }
   
 }
@@ -365,7 +388,9 @@ class CActionHandlers {
   }
 
   public static function getAllEvents($request, &$response) {
-    $response->fail("getAllEvents not implemented yet");
+    CEventDb::getAllEvents($events, $status);
+    $getAllEventsResponse = CGetAllEventsResponse::newFromEvents($events);
+    $response->success($getAllEventsResponse);
   }
 
   public static function createEvent($request, &$response) {
@@ -379,14 +404,14 @@ class CActionHandlers {
       return;
     }
     
-    $payload = json_decode($request->post->payload);
     // Transfer the event data from the request and create the DB entry
-    $event  = CEvent::newFromJsEvent($payload);
+    $payload = json_decode($request->post->payload);
+    $event   = CEvent::newFromJsEvent($payload);
     
-    // Check if an event image is attached
+    // If an event image is attached, add event image names
     if ($payload->base64Image !== null) {
-      $event->eventImageOriginal  = CConfig::eventImageOriginal;
-      $event->eventImageThumbnail = CConfig::eventImageThumbnail;
+      $event->imageOriginal  = CConfig::eventImageOriginal;
+      $event->imageThumbnail = CConfig::eventImageThumbnail;
     }
     
     // Add the event to the database
@@ -397,12 +422,12 @@ class CActionHandlers {
       return;
     }
 
-    // Create the images
-    if ($payload->base64Image !== null) {
-      CImageUtil::saveBase64Image($payload->base64Image, $event->dir . "/" . $event->eventImageOriginal);
-      CImageUtil::saveBase64ImageResized($payload->base64Image, $event->dir . "/" . $event->eventImageThumbnail, CConfig::thumbnailWidth);
+    // Event was successfully created, so it's OK to create the images
+    if ($payload->base64Image !== null) {    
+      CImageUtil::saveBase64Image($payload->base64Image, $event->dir . "/" . $event->imageOriginal);
+      CImageUtil::saveBase64ImageResized($payload->base64Image, $event->dir . "/" . $event->imageThumbnail, CConfig::thumbnailWidth);
     }
-      
+
     // Create the response object
     $createEventResponse = CCreateEventResponse::newFromEvent($event);
     $response->success($createEventResponse);
