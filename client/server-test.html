@@ -36,25 +36,16 @@ function log(msg) {
   console.log(msg);
 }
 
-function createEventSuccess(response) {
+function defaultSuccess(response) {
   log(response);
 }
 
-function createEventError(response) {
+function defaultError(response) {
   log(response);
 }
 
-function createEventProgress(response) {
+function defaultProgress(response) {
   log(response);
-}
-
-function createEventClick() {
-  var lat       = parseFloat($("#eventPositionLat").val());
-  var lon       = parseFloat($("#eventPositionLon").val());
-  var pos       = new server.Position(lat, lon);
-  var event     = new server.Event($("#eventName").val(), $("#eventDescription").val(), pos, $("#eventImage").attr("src"));
-  var callbacks = {success: createEventSuccess, error: createEventError, progress: createEventProgress};
-  server.createEvent(event, callbacks);
 }
 
 function setUserClick() {
@@ -63,8 +54,18 @@ function setUserClick() {
     error("user name cannot be blank");
   }
   else {
-    server.setUser(userName);
+    var user = new server.User(userName);
+    server.setUser(user, {success: defaultSuccess, error: defaultError});
   }
+}
+
+function createEventClick() {
+  var lat       = parseFloat($("#eventPositionLat").val());
+  var lon       = parseFloat($("#eventPositionLon").val());
+  var pos       = new server.Position(lat, lon);
+  var event     = new server.Event($("#eventName").val(), $("#eventDescription").val(), pos, $("#eventImage").attr("src"));
+  var callbacks = {success: defaultSuccess, error: defaultError, progress: defaultProgress};
+  server.createEvent(event, callbacks);
 }
 
 function selectEventImageClick() {
@@ -93,7 +94,7 @@ function getAllEventsSuccess(response) {
     var $tr = $("<tr>");
     var imgFile = event.imageThumbnail;
     if (imgFile !== null) {
-      $tr.append($("<td>").append($("<img>").attr("src", server.getFileUrl(event.dir + "/" + imgFile))));
+      $tr.append($("<td>").append($("<img>").attr("src", server.getFileUrl(imgFile))));
     }
     else {
       $tr.append($("<td>").text("No Image"));
@@ -101,7 +102,7 @@ function getAllEventsSuccess(response) {
     $tr.append($("<td>").text(event.name));
     $tr.append($("<td>").text(event.description));
     $tr.append($("<td>").text(event.createdBy));
-    $tr.append($("<td>").text((new Date(event.timestamp)).toISOString()));
+    $tr.append($("<td>").text((new Date(event.timestamp*1000)).toISOString()));
     $table.append($tr);
   }
   $("#eventList").append($table);
@@ -120,7 +121,7 @@ function getAllEventsClick() {
 }
 
 $(function() {
-  server.setUser($("#userName").val());
+  setUserClick();
   $("#setUser").click(setUserClick);
   $("#selectEventImage").on("change", selectEventImageClick);
   $("#createEvent").click(createEventClick);

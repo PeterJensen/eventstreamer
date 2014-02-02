@@ -1,17 +1,21 @@
-// ----------------------------------
+// ---------------------------------------------------------------------------
 // Author: Peter Jensen
-// ----------------------------------
+// ---------------------------------------------------------------------------
 
 var server = function () {
 
+  // -------------------------------------------------------------------------
   // configuration data
+  // -------------------------------------------------------------------------
 
   var config = {
     serverUrl:    "../server/eventstreamer.php",
     serverPrefix: "../server/"
   };
 
+  // -------------------------------------------------------------------------
   // interface types
+  // -------------------------------------------------------------------------
   
   function Position(lat, lon) {
     this.lat = lat;
@@ -23,13 +27,16 @@ var server = function () {
     this.description = description;
     this.position    = position; // a Position object
     this.base64Image = (typeof base64Image === "undefined") ? null : base64Image;
-    this.timestamp   = Date.now();
     this.createdBy   = state.userName;
-    this.id          = null; // will be filled in by the server
-    this.dir         = null; // will be filled in by the server
   }
   
+  function User(name) {
+    this.name = name;
+  }
+  
+  // -------------------------------------------------------------------------
   // state data
+  // -------------------------------------------------------------------------
 
   var state = {
     event:         null,
@@ -40,13 +47,16 @@ var server = function () {
   // enumeration of all server actions
 
   var actions = {
-    uploadBase64:     "uploadBase64",
+    setUser:          "setUser",
     getEventsCloseBy: "getEventsCloseBy",
     getAllEvents:     "getAllEvents",
-    createEvent:      "createEvent"
+    createEvent:      "createEvent",
+    uploadBase64:     "uploadBase64"
   };
 
+  // -------------------------------------------------------------------------
   // private functions
+  // -------------------------------------------------------------------------
 
   function errorLog(msg) {
     console.log ("ERROR(server.js): " + msg);
@@ -137,14 +147,17 @@ var server = function () {
     }
   }
 
+  // -------------------------------------------------------------------------
   // exported functions
+  // -------------------------------------------------------------------------
 
   function setEvent(event) {
     state.event = event;
   }
 
-  function setUser(userName) {
-    state.userName = userName;
+  function setUser(user, callbacks) {
+    state.user = user;
+    makeAjaxPostRequest(makeBaseUrl(actions.setUser), user, callbacks);
   }
 
   function setErrorCallback(error) {
@@ -182,6 +195,7 @@ var server = function () {
   return {
     Position:         Position,
     Event:            Event,
+    User:             User,
     setEvent:         setEvent,
     setUser:          setUser,
     setErrorCallback: setErrorCallback,

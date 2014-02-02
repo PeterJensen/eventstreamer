@@ -8,7 +8,10 @@
 // ---------------------------------------------------------------------------
 
 class CConfig {
-  const eventsDir           = "./events";
+  const usersDir            = "users";
+  const usersJsonFileName   = "users.json";
+  const usersDatFileName    = "users.txt";
+  const eventsDir           = "events";
   const eventJsonFileName   = "event.json";
   const eventDatFileName    = "event.txt";
   const eventsJsonFileName  = "events.json";
@@ -32,10 +35,11 @@ class CGetParamKeys {
 // ?action values
 
 class CActions {
-  const uploadBase64     = "uploadBase64";
+  const setUser          = "setUser";
   const getEventsCloseBy = "getEventsCloseBy";
   const getAllEvents     = "getAllEvents";
   const createEvent      = "createEvent";
+  const uploadBase64     = "uploadBase64";
 }
 
 // ---------------------------------------------------------------------------
@@ -56,20 +60,19 @@ class CJsEvent {
   public $createdBy;
 }
 
+class CJsUser {
+  public $name;
+}
+
 // ---------------------------------------------------------------------------
-// Response types.  There are returned as JSON payload data
+// Response types.  These are returned as JSON payload data
 // ---------------------------------------------------------------------------
 
 class CCreateEventResponse {
   public $id;
-  public $dir;
-  public $timeStamp;
-  public $images;
-
   public static function newFromEvent($event) {
     $response = new CCreateEventResponse();
     $response->id  = $event->id;
-    $response->dir = $event->dir;
     return $response;
   }
 }
@@ -77,6 +80,19 @@ class CCreateEventResponse {
 class CGetAllEventsResponse {
   public static function newFromEvents($events) {
     return $events;
+  }
+}
+
+class CSetUserResponse {
+  public $id;
+  public $isNew;
+  public $timestamp;
+  public static function newFromUser($user) {
+    $response = new CSetUserResponse();
+    $response->id = $user->id;
+    $response->isNew = true;
+    $response->timestamp = $user->timestamp;
+    return $response;
   }
 }
 
@@ -179,10 +195,6 @@ class CImage {
   public $uploadTimestamp;
 }
 
-class CEventNames {
-  public $eventNames;
-}
-
 // ---------------------------------------------------------------------------
 // Image creation utilities
 // ---------------------------------------------------------------------------
@@ -226,14 +238,25 @@ class CStatus {
   public $errorMessage;
 }
 
+class CUser {
+  public $id        = null;
+  public $name      = null;
+  public $timestamp = null;
+  
+  public static function newFromJsUser($jsUser) {
+    $user = new CUser();
+    $user->name = $jsUser->name;
+    return $user;
+  }
+}
+
 class CEvent {
+  public $id             = null;
   public $name           = null;
   public $description    = null;
   public $position       = null;
   public $timestamp      = null;
   public $createdBy      = null;
-  public $id             = null;
-  public $dir            = null;
   public $imageOriginal  = null;
   public $imageThumbnail = null;
   
@@ -242,16 +265,14 @@ class CEvent {
     $event->name        = $jsEvent->name;
     $event->description = $jsEvent->description;
     $event->position    = $jsEvent->position;
-    $event->timestamp   = $jsEvent->timestamp;
     $event->createdBy   = $jsEvent->createdBy;
+    if ($jsEvent->base64Image !== null) {
+      $event->imageOriginal  = CConfig::eventImageOriginal;
+      $event->imageThumbnail = CConfig::eventImageThumbnail;
+    }
     return $event;
   }
   
-  public static function newFromJson($json) {
-    // as long as there are only static methods in this class this will work
-    $event = json_decode($json);
-    return $event;
-  }
 }
 
 class CEvents {
@@ -277,18 +298,25 @@ class CEventDb {
 
   // Private functions
   
-  private static function createEventId($event) {
-    $id = "";
-    $name = $event->name;
-    for ($i = 0; $i < strlen($name); ++$i) {
-      $c = $name{$i};
+  private static function removeFunnyChars($str) {
+    $newStr = "";
+    for ($i = 0; $i < strlen($str); ++$i) {
+      $c = $str{$i};
       if (($c >= 'A' && $c <= 'Z') ||
           ($c >= 'a' && $c <= 'z') ||
           ($c >= '0' && $c <= '9')) {
-        $id .= $c;
+        $newStr .= $c;
       }
     }
-    return $id;
+    return $newStr;
+  }
+  
+  private static function createEventId($event) {
+    return self::removeFunnyChars($event->name);
+  }
+  
+  private static function createUserId($user) {
+    return self::removeFunnyChars($user->name);
   }
 
   private static function createEventDir($event, &$status) {
@@ -338,32 +366,50 @@ class CEventDb {
 
   // Public functions
   
+  public static function setUser(&$user, $status) {
+    $status->success = true;
+    $user->id = self::createuserId($user);
+    $user->timestamp = time();
+    return true;
+  }
+  
   public static function createEvent(&$event, &$status) {
     $status->success = true;  // assume event creation will succeed
     
     // Create an event id
     $event->id = self::createEventId($event);
+    
+    // Set the timestamp
+    $event->timestamp = time();
 
     // Create the event dir
-    $event->dir = self::createEventDir($event, $status);
+    $dir = self::createEventDir($event, $status);
     if (!$status->success) {
       return false;
+    }
+    
+    // add prefix to image filenames
+    if ($event->imageOriginal !== null) {
+      $event->imageOriginal  = $dir . "/" . $event->imageOriginal;
+      $event->imageThumbnail = $dir . "/" . $event->imageThumbnail;
     }
 
     // Create the event data files
     self::createDataFiles(
       $event,
-      $event->dir . "/" . CConfig::eventJsonFileName,
-      $event->dir . "/" . CConfig::eventDatFileName,
+      $dir . "/" . CConfig::eventJsonFileName,
+      $dir . "/" . CConfig::eventDatFileName,
       $status);
     if (!$status->success) {
       return false;
     }
 
+    // Update the global event data
     self::updateAllEvents($event, $status);
     if (!$status->success) {
       return false;
     }
+    
     return true;
   }
   
@@ -378,6 +424,19 @@ class CEventDb {
 // ---------------------------------------------------------------------------
 
 class CActionHandlers {
+
+  public static function setUser($request, &$response) {
+    $payload = json_decode($request->post->payload);
+    $user = CUser::newFromJsUser($payload);
+    $status = new CStatus();
+    CEventDb::setUser($user, $status);
+    if (!$status->success) {
+      $response->fail($status->errorMessage);
+      return;
+    }
+    $setUserResponse = CSetUserResponse::newFromUser($user);
+    $response->success($setUserResponse);
+  }
 
   public static function uploadBase64($request, &$response) {
     $response->fail("saveBase64 not implemented yet");
@@ -408,12 +467,6 @@ class CActionHandlers {
     $payload = json_decode($request->post->payload);
     $event   = CEvent::newFromJsEvent($payload);
     
-    // If an event image is attached, add event image names
-    if ($payload->base64Image !== null) {
-      $event->imageOriginal  = CConfig::eventImageOriginal;
-      $event->imageThumbnail = CConfig::eventImageThumbnail;
-    }
-    
     // Add the event to the database
     $status = new CStatus();
     CEventDb::createEvent($event, $status);
@@ -423,9 +476,9 @@ class CActionHandlers {
     }
 
     // Event was successfully created, so it's OK to create the images
-    if ($payload->base64Image !== null) {    
-      CImageUtil::saveBase64Image($payload->base64Image, $event->dir . "/" . $event->imageOriginal);
-      CImageUtil::saveBase64ImageResized($payload->base64Image, $event->dir . "/" . $event->imageThumbnail, CConfig::thumbnailWidth);
+    if ($event->imageOriginal !== null) {
+      CImageUtil::saveBase64Image($payload->base64Image, $event->imageOriginal);
+      CImageUtil::saveBase64ImageResized($payload->base64Image, $event->imageThumbnail, CConfig::thumbnailWidth);
     }
 
     // Create the response object
@@ -439,6 +492,9 @@ function main() {
   $response  = new CResponse();
   
   switch ($request->get->action) {
+    case CActions::setUser:
+      CActionHandlers::setUser($request, $response);
+      break;
     case CActions::uploadBase64:
       CActionHandlers::uploadBase64($request, $response);
       break;
