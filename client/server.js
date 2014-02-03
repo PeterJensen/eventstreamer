@@ -34,13 +34,24 @@ var server = function () {
     this.name = name;
   }
   
+  function SetEvent(name) {
+    this.name = name;
+  }
+  
+  function UploadImage(base64Image, position) {
+    this.base64Image = base64Image;
+    this.position    = position;
+  }
+  
   // -------------------------------------------------------------------------
   // state data
   // -------------------------------------------------------------------------
 
   var state = {
-    event:         null,
+    eventName:     null,
+    eventId:       null,
     userName:      null,
+    userId:        null,
     errorCallback: null
   };
 
@@ -48,10 +59,11 @@ var server = function () {
 
   var actions = {
     setUser:          "setUser",
+    setEvent:         "setEvent",
     getEventsCloseBy: "getEventsCloseBy",
     getAllEvents:     "getAllEvents",
     createEvent:      "createEvent",
-    uploadBase64:     "uploadBase64"
+    uploadImage:      "uploadImage"
   };
 
   // -------------------------------------------------------------------------
@@ -151,13 +163,24 @@ var server = function () {
   // exported functions
   // -------------------------------------------------------------------------
 
-  function setEvent(event) {
-    state.event = event;
+  function setEvent(event, callbacks) {
+    function success(response) {
+      if (response.payload.exists) {
+        state.eventId = response.payload.event.id;
+      }
+      callbacks.success(response);
+    }
+    state.eventName = event.name;
+    makeAjaxPostRequest(makeBaseUrl(actions.setEvent), event, {success: success, error: callbacks.error});
   }
 
   function setUser(user, callbacks) {
-    state.user = user;
-    makeAjaxPostRequest(makeBaseUrl(actions.setUser), user, callbacks);
+    function success(response) {
+      state.userId = response.payload.id;
+      callbacks.success(response);
+    }
+    state.userName = user.name;
+    makeAjaxPostRequest(makeBaseUrl(actions.setUser), user, {success: success, error: callbacks.error});
   }
 
   function setErrorCallback(error) {
@@ -168,14 +191,11 @@ var server = function () {
     return config.serverPrefix + path;
   }
   
-  function uploadBase64(fileName, base64, callbacks) {
+  function uploadImage(uploadImage, callbacks) {
     if (!checkEventState() || !checkUserState()) {
       return;
     }
-    makeAjaxPostRequest(
-      makeEventUserUrl(actions.uploadBase64),
-      {fileName: fileName, fileData: base64},
-      callbacks);
+    makeAjaxPostRequest(makeEventUserUrl(actions.uploadImage), uploadImage, callbacks);
   }
 
   function getEventsCloseBy(position, callbacks) {
@@ -193,9 +213,13 @@ var server = function () {
   }
 
   return {
+    // types
     Position:         Position,
     Event:            Event,
     User:             User,
+    SetEvent:         SetEvent,
+    
+    // operations
     setEvent:         setEvent,
     setUser:          setUser,
     setErrorCallback: setErrorCallback,
@@ -203,7 +227,7 @@ var server = function () {
     getEventsCloseBy: getEventsCloseBy,
     getAllEvents:     getAllEvents,
     createEvent:      createEvent,
-    uploadBase64:     uploadBase64
+    uploadImage:      uploadImage
   }
   
 }();

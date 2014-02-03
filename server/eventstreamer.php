@@ -36,10 +36,11 @@ class CGetParamKeys {
 
 class CActions {
   const setUser          = "setUser";
+  const setEvent         = "setEvent";
   const getEventsCloseBy = "getEventsCloseBy";
   const getAllEvents     = "getAllEvents";
   const createEvent      = "createEvent";
-  const uploadBase64     = "uploadBase64";
+  const uploadImage      = "uploadImage";
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +62,10 @@ class CJsEvent {
 }
 
 class CJsUser {
+  public $name;
+}
+
+class CJsSetEvent {
   public $name;
 }
 
@@ -94,6 +99,17 @@ class CSetUserResponse {
     $response->timestamp = $user->timestamp;
     return $response;
   }
+}
+
+class CSetEventResponse {
+  public $exists;
+  public $event;
+  public static function newFromEvent($event) {
+    $response = new CSetEventResponse();
+    $response->exists = ($event !== null);
+    $response->event = $event;
+    return $response;
+  }    
 }
 
 // ---------------------------------------------------------------------------
@@ -363,6 +379,10 @@ class CEventDb {
     $events->addEvent($event);
     self::createDataFiles($events, $jsonFileName, $datFileName, $status);
   }
+  
+  private static function readEventsFromFile() {
+    return CEvents::newFromDatFile(CConfig::eventsDir . "/" . CConfig::eventsDatFileName);
+  }
 
   // Public functions
   
@@ -371,6 +391,19 @@ class CEventDb {
     $user->id = self::createuserId($user);
     $user->timestamp = time();
     return true;
+  }
+  
+  public static function lookupEventByName($eventName, &$event, &$status) {
+    $status->success = true;
+    $events = self::readEventsFromFile();
+    foreach ($events->events as $e) {
+      if ($eventName === $e->name) {
+        $event = $e;
+        return true;
+      }
+    }
+    $event = null;
+    return false;
   }
   
   public static function createEvent(&$event, &$status) {
@@ -414,7 +447,7 @@ class CEventDb {
   }
   
   public static function getAllEvents(&$events, &$status) {
-    $events = CEvents::newFromDatFile(CConfig::eventsDir . "/" . CConfig::eventsDatFileName);
+    $events = self::readEventsFromFile();
   }
   
 }
@@ -437,8 +470,20 @@ class CActionHandlers {
     $setUserResponse = CSetUserResponse::newFromUser($user);
     $response->success($setUserResponse);
   }
+  
+  public static function setEvent($request, &$response) {
+    $payload = json_decode($request->post->payload);
+    $status  = new CStatus();
+    CEventDb::lookupEventByName($payload->name, $event, $status);
+    if (!$status->success) {
+      $response->fail($status->errorMessage);
+      return;
+    }
+    $setEventResponse = CSetEventResponse::newFromEvent($event);
+    $response->success($setEventResponse);
+  }
 
-  public static function uploadBase64($request, &$response) {
+  public static function uploadImage($request, &$response) {
     $response->fail("saveBase64 not implemented yet");
   }
   
@@ -495,8 +540,11 @@ function main() {
     case CActions::setUser:
       CActionHandlers::setUser($request, $response);
       break;
-    case CActions::uploadBase64:
-      CActionHandlers::uploadBase64($request, $response);
+    case CActions::setEvent:
+      CActionHandlers::setEvent($request, $response);
+      break;
+    case CActions::uploadImage:
+      CActionHandlers::uploadImage($request, $response);
       break;
     case CActions::getEventsCloseBy:
       CActionHandlers::getEventsCloseBy($request, $response);
