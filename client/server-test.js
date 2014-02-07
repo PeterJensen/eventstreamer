@@ -26,7 +26,7 @@ function setUserClick() {
 
   function setUserSuccess(response) {
     var id = response.payload.id;
-    $("#userId").val(id);
+    $("#userId").text(id);
   }
   
   var userName = $("#userName").val();
@@ -49,7 +49,7 @@ function setEventClick() {
     else {
       id = "## EVENT DOESN'T EXIST";
     }
-    $("#eventId").val(id);
+    $("#eventId").text(id);
   }
     
   var eventName = $("#selectEventName").val();
