@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html ng-app>
+<head>
+  <script src="angular-1.2.11.js"></script>
+  <script src="jquery-1.10.2.js"></script>
+  <script src="server.js"></script>
+  <script src="server-test-angular.js"></script>
+</head>
+<body>
+<div ng-controller="EventCtrl">
+<button ng-click="showEvents()">Show Events</button>
+<button ng-click="clearEvents()">Clear Events</button>
+  <div ng-repeat="event in events">
+    <img ng-src="{{event.thumbnail}}"><span>{{event.description}}</span>
+  </div>
+</div>
+</body>
+</html>
