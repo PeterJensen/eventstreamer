@@ -25,6 +25,7 @@ function defaultProgress(response) {
 function setUserClick() {
 
   function setUserSuccess(response) {
+    log(response);
     var id = response.payload.id;
     $("#userId").text(id);
   }
@@ -42,6 +43,7 @@ function setUserClick() {
 function setEventClick() {
 
   function setEventSuccess(response) {
+    log(response);
     var id;
     if (response.payload.exists) {
       id = response.payload.event.id;
@@ -125,6 +127,27 @@ function getAllEventsClick() {
   server.getAllEvents(callbacks);
 }
 
+function selectUserImageClick() {
+  var inputFiles = $("#selectUserImage")[0];
+  var file = inputFiles.files[0];
+  log ("File selected: " + file.name + ", size: " + file.size);
+  var reader = new FileReader();
+  reader.onload = function(event) {
+    $("#userImage").attr("src", event.target.result);
+  };
+  reader.readAsDataURL (file);
+}
+
+function addUserImageClick() {
+  var lat       = parseFloat($("#userPositionLat").val());
+  var lon       = parseFloat($("#userPositionLon").val());
+  var pos       = new server.Position(lat, lon);
+  var caption   = $("#userCaption").val();
+  var userImage = new server.UploadImage($("#userImage").attr("src"), pos, caption);
+  var callbacks = {success: defaultSuccess, error: defaultError, progress: defaultProgress};
+  server.uploadImage(userImage, callbacks);
+}
+
 $(function() {
   setUserClick();
   $("#setUser").click(setUserClick);
@@ -132,4 +155,6 @@ $(function() {
   $("#selectEventImage").on("change", selectEventImageClick);
   $("#createEvent").click(createEventClick);
   $("#getAllEvents").click(getAllEventsClick);
+  $("#selectUserImage").on("change", selectUserImageClick);
+  $("#addUserImage").click(addUserImageClick);
 });

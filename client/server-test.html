@@ -2,7 +2,7 @@
 <html>
 <head>
 <style>
-#eventImage {width:120px; border:solid black 1px; min-height:90px}
+#eventImage, #userImage {width:120px; border:solid black 1px; min-height:90px}
 </style>
 </head>
 <body>
@@ -29,6 +29,13 @@ Event Image:<br />
 <h2>Get All Events</h2>
 <button id="getAllEvents">Show all events</button>
 <div id="eventList"></div>
+
+<h2>Add User Image</h2>
+User Image:<br />
+<img id="userImage" /><input type="file" id="selectUserImage"/><br />
+User Image Caption: <input id="userCaption" type="text" value="User Caption"/> <br />
+User Position: lat: <input id="userPositionLat" type="text" value="37.7833"/> lon: <input id="userPositionLon" type="text" value="122.4167"/><br />
+<button id="addUserImage">Add User Image</button>
 
 <script src="./jquery-1.10.2.js"></script>
 <script src="./server.js"></script>

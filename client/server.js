@@ -38,9 +38,10 @@ var server = function () {
     this.name = name;
   }
   
-  function UploadImage(base64Image, position) {
+  function UploadImage(base64Image, position, caption) {
     this.base64Image = base64Image;
     this.position    = position;
+    this.caption     = caption;
   }
   
   // -------------------------------------------------------------------------
@@ -218,6 +219,7 @@ var server = function () {
     Event:            Event,
     User:             User,
     SetEvent:         SetEvent,
+    UploadImage:      UploadImage,
     
     // operations
     setEvent:         setEvent,

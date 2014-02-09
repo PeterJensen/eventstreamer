@@ -18,7 +18,12 @@ class CConfig {
   const eventsDatFileName   = "events.txt";
   const eventImageOriginal  = "event.jpg";
   const eventImageThumbnail = "event-thumb.jpg";
+  const imageJsonFileName   = "images.json";
+  const lastIdFileName      = "last-id.txt";
   const thumbnailWidth      = 120;
+  const smallWidth          = 320;
+  const mediumWidth         = 640;
+  const largeWidth          = 1280;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +74,12 @@ class CJsSetEvent {
   public $name;
 }
 
+class CJsUploadImage {
+  public $base64Image;
+  public $position;
+  public $caption;
+}
+
 // ---------------------------------------------------------------------------
 // Response types.  These are returned as JSON payload data
 // ---------------------------------------------------------------------------
@@ -110,6 +121,19 @@ class CSetEventResponse {
     $response->event = $event;
     return $response;
   }    
+}
+
+class CUploadImageResponse {
+  public $id;
+  public $timestamp;
+  public $imageOriginal;
+  public static function newFromImage($image) {
+    $response = new CUploadImageResponse();
+    $response->timestamp = $image->timestamp;
+    $response->id = $image->id;
+    $response->imageOriginal = $image->imageOriginal;
+    return $response;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -201,16 +225,6 @@ class CResponse {
   }
 }
 
-class CImage {
-  public $smallImage;
-  public $mediumImage;
-  public $largeImage;
-  public $originalImage;
-  public $author;
-  public $imageTimestamp;
-  public $uploadTimestamp;
-}
-
 // ---------------------------------------------------------------------------
 // Image creation utilities
 // ---------------------------------------------------------------------------
@@ -239,6 +253,43 @@ class CImageUtil {
     $newImg = imagecreatetruecolor($width, $height);
     imagecopyresampled($newImg, $img, 0, 0, 0, 0, $width, $height, $orgWidth, $orgHeight);
     imagejpeg($newImg, $filename, 90);
+  }
+  
+}
+
+// ---------------------------------------------------------------------------
+// File system utilities
+// ---------------------------------------------------------------------------
+
+class CFileUtil {
+
+  public static function createFile($fileName, $contents, &$status) {
+    $status->success = true;
+    $ret = @file_put_contents($fileName, $contents);
+    if ($ret === false) {
+      $status->success = false;
+      $status->errorMessage = "Cannot create $filename";
+      return false;
+    }
+    else {
+      return true;
+    }
+  }
+
+  public static function createDir($dir, &$status) {
+    $status->success = true;
+    // Check if directory already exists
+    if (is_dir($dir)) {
+      $status->success = false;
+      $status->errorMessage = "$dir already exists";
+      return false;
+    }
+    if (!@mkdir($dir)) {
+      $status->success = false;
+      $status->errorMessage = "Cannot create directory: $dir";
+      return false;
+    }
+    return true;
   }
   
 }
@@ -308,6 +359,39 @@ class CEvents {
   }
 }
 
+class CImage {
+  public $id;
+  public $imageSmall;
+  public $imageMedium;
+  public $imageLarge;
+  public $imageOriginal;
+  public $author;
+  public $timestamp;
+  public $position;
+  public $caption;
+  
+  public static function newFromJsImage($jsImage) {
+    $image = new CImage();
+    $image->position = $jsImage->position;
+    $image->caption  = $jsImage->caption;
+    return $image;
+  }
+}
+
+class CImages {
+  public $images = array();
+  
+  public static function newFromDatFile($datFileName) {
+    if (is_file($datFileName)) {
+      return unserialize(file_get_contents($datFileName));
+    }
+    else {
+      return new CImages();
+    }
+  }
+  }
+
+
 // Database Operations
 
 class CEventDb {
@@ -335,37 +419,21 @@ class CEventDb {
     return self::removeFunnyChars($user->name);
   }
 
+  private static function eventDir($event) {
+    return CConfig::eventsDir ."/" . $event->id;
+  }
+    
   private static function createEventDir($event, &$status) {
-    // Check if directory already exists
-    $eventDir = CConfig::eventsDir . "/" . $event->id;
-    if (is_dir($eventDir)) {
-      $status->success = false;
-      $status->errorMessage = "$event->name already exists";
-      return null;
-    }
-    if (!@mkdir($eventDir)) {
-      $status->success = false;
-      $status->errorMessage = "Cannot create event directory: $eventDir";
-      return null;
-    }
+    CFileUtil:createDir(self::eventDir($event), $status);
     return $eventDir;
   }
 
-  private static function createFile($fileName, $contents, &$status) {
-    $ret = @file_put_contents($fileName, $contents);
-    if ($ret === false) {
-      $status->success = false;
-      $status->errorMessage = "Cannot create $filename";
-      return;
-    }
-  }
-  
   private static function createDataFiles($data, $jsonFileName, $datFileName, &$status) {
-    self::createFile($jsonFileName, json_encode($data), $status);
+    CFileUtil::createFile($jsonFileName, json_encode($data), $status);
     if (!$status->success) {
       return false;
     }
-    self::createFile($datFileName, serialize($data), $status);
+    CFileUtil::createFile($datFileName, serialize($data), $status);
     if (!$status->success) {
       return false;
     }
@@ -382,6 +450,23 @@ class CEventDb {
   
   private static function readEventsFromFile() {
     return CEvents::newFromDatFile(CConfig::eventsDir . "/" . CConfig::eventsDatFileName);
+  }
+  
+  private static function createNextImageId($event) {
+    $dir = self::eventDir($event);
+    $lastIdFileName = $dir . "/" . CConfig::lastIdFileName;
+    if (!is_file($lastIdFileName)) {
+      $lastId = 0;
+    }
+    else {
+      $lastId = file_get_contents($lastIdFileName);
+    }
+    $nextId = sprintf("%06d", $lastId + 1);
+    file_put_contents($lastIdFileName, $nextId);
+    return $nextId;
+  }
+  
+  private static function updateAllImages($event, $image, &$status) {
   }
 
   // Public functions
@@ -403,9 +488,11 @@ class CEventDb {
       }
     }
     $event = null;
+    $status->success = false;
+    $status->errorMessage = "$eventName not found";
     return false;
   }
-  
+
   public static function createEvent(&$event, &$status) {
     $status->success = true;  // assume event creation will succeed
     
@@ -416,10 +503,11 @@ class CEventDb {
     $event->timestamp = time();
 
     // Create the event dir
-    $dir = self::createEventDir($event, $status);
+    self::createEventDir($event, $status);
     if (!$status->success) {
       return false;
     }
+    $dir = self::eventDir($event);
     
     // add prefix to image filenames
     if ($event->imageOriginal !== null) {
@@ -448,6 +536,47 @@ class CEventDb {
   
   public static function getAllEvents(&$events, &$status) {
     $events = self::readEventsFromFile();
+  }
+  
+  public static function addImageToEvent(&$image, $eventName, &$status) {
+    $status->success = true;
+    self::lookupEventByName($eventName, $event, $status);
+    if (!$status->success) {
+      return false;
+    }
+    
+    // Get the next available image id
+    $image->id = self::createNextImageId($event);
+    
+    // Set the timestamp
+    $image->timestamp = time();
+    
+    // Set up all the image filename variants
+    $dir = self::eventDir($event);
+    $imageBaseName = $dir . "/" . $image->id;
+    $image->imageThumbnail = $imageBaseName . "t.jpg";
+    $image->imageSmall     = $imageBaseName . "s.jpg";
+    $image->imageMedium    = $imageBaseName . "m.jpg";
+    $image->imageLarge     = $imageBaseName . "l.jpg";
+    $image->imageOriginal  = $imageBaseName . "o.jpg";
+    
+    // Create the image data files
+    self::createDataFiles(
+      $image,
+      $dir . "/" . $image->id . ".json",
+      $dir . "/" . $image->id . ".txt",
+      $status);
+    if (!$status->success) {
+      return false;
+    }
+    
+    // Update the image data for the event
+    self::updateAllImages($event, $image, $status);
+    if (!$status->success) {
+      return false;
+    }
+
+    return true;    
   }
   
 }
@@ -483,10 +612,6 @@ class CActionHandlers {
     $response->success($setEventResponse);
   }
 
-  public static function uploadImage($request, &$response) {
-    $response->fail("saveBase64 not implemented yet");
-  }
-  
   public static function getEventsCloseBy($request, &$response) {
     $response->fail("getEventsCloseBy not implemented yet");
   }
@@ -530,6 +655,33 @@ class CActionHandlers {
     $createEventResponse = CCreateEventResponse::newFromEvent($event);
     $response->success($createEventResponse);
   }
+  
+  public static function uploadImage($request, $response) {
+    $user          = $request->get->userName;
+    $eventName     = $request->get->eventName;
+    $payload       = json_decode($request->post->payload);
+    $image         = CImage::newFromJsImage($payload);
+    $image->author = $user;
+    
+    // Add the image to the event in the database
+    $status = new CStatus();
+    CEventDb::addImageToEvent($image, $eventName, $status);
+    if (!$status->success) {
+      $response->fail($status->errorMessage);
+      return;
+    }
+    
+    // Image was successfully added to the database, so create the images
+    CImageUtil::saveBase64Image($payload->base64Image, $image->imageOriginal);
+    CImageUtil::saveBase64ImageResized($payload->base64Image, $image->imageThumbnail, CConfig::thumbnailWidth);
+    CImageUtil::saveBase64ImageResized($payload->base64Image, $image->imageSmall, CConfig::smallWidth);
+    CImageUtil::saveBase64ImageResized($payload->base64Image, $image->imageMedium, CConfig::mediumWidth);
+    CImageUtil::saveBase64ImageResized($payload->base64Image, $image->imageLarge, CConfig::largeWidth);
+    
+    // Create the response object
+    $uploadImageResponse = CUploadImageResponse::newFromImage($image);
+    $response->success($uploadImageResponse);
+  }
 }
 
 function main() {
@@ -554,6 +706,9 @@ function main() {
       break;
     case CActions::createEvent:
       CActionHandlers::createEvent($request, $response);
+      break;
+    case CActions::uploadImage:
+      CActionHandlers::uploadImage($request, $response);
       break;
     default:
       $response->fail("Unknown action: $request->get->action");
