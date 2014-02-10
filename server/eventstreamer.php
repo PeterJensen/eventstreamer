@@ -625,9 +625,9 @@ class CEventDb {
 class CActionHandlers {
 
   public static function setUser($request, &$response) {
+    $status = new CStatus();
     $payload = json_decode($request->post->payload);
     $user = CUser::newFromJsUser($payload);
-    $status = new CStatus();
     CEventDb::setUser($user, $status);
     if (!$status->success) {
       $response->fail($status->errorMessage);
@@ -638,8 +638,8 @@ class CActionHandlers {
   }
   
   public static function setEvent($request, &$response) {
-    $payload = json_decode($request->post->payload);
     $status  = new CStatus();
+    $payload = json_decode($request->post->payload);
     CEventDb::lookupEventByName($payload->name, $event, $status);
     $setEventResponse = CSetEventResponse::newFromEvent($event);
     $response->success($setEventResponse);
@@ -657,6 +657,7 @@ class CActionHandlers {
   }
 
   public static function createEvent($request, &$response) {
+    $status = new CStatus();
     // userName must be specified
     if ($request->get->userName === null) {
       $response->fail("userName not specified");
@@ -672,7 +673,6 @@ class CActionHandlers {
     $event   = CEvent::newFromJsEvent($payload);
     
     // Add the event to the database
-    $status = new CStatus();
     CEventDb::createEvent($event, $status);
     if (!$status->success) {
       $response->fail($status->errorMessage);
@@ -691,6 +691,7 @@ class CActionHandlers {
   }
   
   public static function uploadImage($request, $response) {
+    $status = new CStatus();
     $user          = $request->get->userName;
     $eventName     = $request->get->eventName;
     $payload       = json_decode($request->post->payload);
@@ -698,7 +699,6 @@ class CActionHandlers {
     $image->author = $user;
     
     // Add the image to the event in the database
-    $status = new CStatus();
     CEventDb::addImageToEvent($image, $eventName, $status);
     if (!$status->success) {
       $response->fail($status->errorMessage);
