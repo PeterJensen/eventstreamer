@@ -115,7 +115,7 @@ function getAllEventsClick() {
     }
     $("#eventList").append($table);
     
-    var pre = $("<pre></pre>").text(JSON.stringify(response, false, 2));
+    var pre = $("<pre>").text(JSON.stringify(response, false, 2));
     $("#eventList").append(pre);
   }
   
@@ -148,6 +148,17 @@ function addUserImageClick() {
   server.uploadImage(userImage, callbacks);
 }
 
+function getAllEventImagesClick() {
+
+  function getAllEventImagesSuccess(response) {
+    $("#eventImagesList").empty();
+    var pre = $("<pre>").text(JSON.stringify(response, false, 2));
+    $("#eventImagesList").append(pre);
+  }
+  
+  server.getAllEventImages({success: getAllEventImagesSuccess, error: defaultError});
+}
+
 $(function() {
   setUserClick();
   $("#setUser").click(setUserClick);
@@ -157,4 +168,5 @@ $(function() {
   $("#getAllEvents").click(getAllEventsClick);
   $("#selectUserImage").on("change", selectUserImageClick);
   $("#addUserImage").click(addUserImageClick);
+  $("#getAllEventImages").click(getAllEventImagesClick);
 });

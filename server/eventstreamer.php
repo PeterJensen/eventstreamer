@@ -10,15 +10,18 @@
 class CConfig {
   const usersDir            = "users";
   const usersJsonFileName   = "users.json";
-  const usersDatFileName    = "users.txt";
+  const usersDatFileName    = "users.ser";
   const eventsDir           = "events";
   const eventJsonFileName   = "event.json";
-  const eventDatFileName    = "event.txt";
+  const eventDatFileName    = "event.ser";
   const eventsJsonFileName  = "events.json";
-  const eventsDatFileName   = "events.txt";
+  const eventsDatFileName   = "events.ser";
   const eventImageOriginal  = "event.jpg";
   const eventImageThumbnail = "event-thumb.jpg";
-  const imageJsonFileName   = "images.json";
+  const imagesJsonFileName  = "images.json";
+  const imagesDatFileName   = "images.ser";
+  const imageJsonFileName   = "image.json";
+  const imageDatFileName    = "image.ser";
   const lastIdFileName      = "last-id.txt";
   const thumbnailWidth      = 120;
   const smallWidth          = 320;
@@ -34,18 +37,18 @@ class CGetParamKeys {
   const action    = "action";
   const eventName = "eventName";
   const userName  = "userName";
-  const fileName  = "fileName";
 }
 
 // ?action values
 
 class CActions {
-  const setUser          = "setUser";
-  const setEvent         = "setEvent";
-  const getEventsCloseBy = "getEventsCloseBy";
-  const getAllEvents     = "getAllEvents";
-  const createEvent      = "createEvent";
-  const uploadImage      = "uploadImage";
+  const setUser           = "setUser";
+  const setEvent          = "setEvent";
+  const getEventsCloseBy  = "getEventsCloseBy";
+  const getAllEvents      = "getAllEvents";
+  const createEvent       = "createEvent";
+  const uploadImage       = "uploadImage";
+  const getAllEventImages = "getAllEventImages";
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +116,6 @@ class CSetUserResponse {
 }
 
 class CSetEventResponse {
-  public $exists;
   public $event;
   public static function newFromEvent($event) {
     $response = new CSetEventResponse();
@@ -136,6 +138,12 @@ class CUploadImageResponse {
   }
 }
 
+class CGetAllEventImagesResponse {
+  public static function newFromImages($images) {
+    return $images;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Utilities for getting GET and POST request parameters
 // ---------------------------------------------------------------------------
@@ -144,7 +152,6 @@ class CGetParamValues {
   public $action    = null;
   public $eventName = null;
   public $userName  = null;
-  public $fileName  = null;
 
   private static function paramValue($key) {
     if (!isset($_GET[$key])) {
@@ -157,7 +164,6 @@ class CGetParamValues {
     $this->action    = self::paramValue(CGetParamKeys::action);
     $this->eventName = self::paramValue(CGetParamKeys::eventName);
     $this->userName  = self::paramValue(CGetParamKeys::userName);
-    $this->fileName  = self::paramValue(CGetParamKeys::fileName);
   }
   
   public function __construct() {
@@ -355,7 +361,7 @@ class CEvents {
   }
 
   public function addEvent($event) {
-    $this->events[] = $event;
+    array_unshift($this->events, $event);
   }
 }
 
@@ -389,7 +395,11 @@ class CImages {
       return new CImages();
     }
   }
+  
+  public function addImage($image) {
+    array_unshift($this->images, $image);
   }
+}
 
 
 // Database Operations
@@ -422,10 +432,13 @@ class CEventDb {
   private static function eventDir($event) {
     return CConfig::eventsDir ."/" . $event->id;
   }
+  
+  private static function imageDir($event, $image) {
+    return CConfig::eventsDir . "/" . $event->id . "/" . $image->id;
+  }
     
   private static function createEventDir($event, &$status) {
-    CFileUtil:createDir(self::eventDir($event), $status);
-    return $eventDir;
+    CFileUtil::createDir(self::eventDir($event), $status);
   }
 
   private static function createDataFiles($data, $jsonFileName, $datFileName, &$status) {
@@ -451,6 +464,10 @@ class CEventDb {
   private static function readEventsFromFile() {
     return CEvents::newFromDatFile(CConfig::eventsDir . "/" . CConfig::eventsDatFileName);
   }
+
+  private static function readEventImagesFromFile($event) {
+    return CImages::newFromDatFile(self::eventDir($event) . "/" . CConfig::imagesDatFileName);
+  }
   
   private static function createNextImageId($event) {
     $dir = self::eventDir($event);
@@ -467,6 +484,11 @@ class CEventDb {
   }
   
   private static function updateAllImages($event, $image, &$status) {
+    $jsonFileName = self::eventDir($event) . "/" . CConfig::imagesJsonFileName;
+    $datFileName =  self::eventDir($event) . "/" . CConfig::imagesDatFileName;
+    $images = CImages::newFromDatFile($datFileName);
+    $images->addImage($image);
+    self::createDataFiles($images, $jsonFileName, $datFileName, $status);
   }
 
   // Public functions
@@ -550,21 +572,28 @@ class CEventDb {
     
     // Set the timestamp
     $image->timestamp = time();
+
+    // Create the dir to hold all image sizes    
+    $dir = self::eventDir($event);
+    $imageDir = $dir . "/" . $image->id;
+    CFileUtil::createDir($imageDir, $status);
+    if (!$status->success) {
+      $status->success = false;
+      return false;
+    }
     
     // Set up all the image filename variants
-    $dir = self::eventDir($event);
-    $imageBaseName = $dir . "/" . $image->id;
-    $image->imageThumbnail = $imageBaseName . "t.jpg";
-    $image->imageSmall     = $imageBaseName . "s.jpg";
-    $image->imageMedium    = $imageBaseName . "m.jpg";
-    $image->imageLarge     = $imageBaseName . "l.jpg";
-    $image->imageOriginal  = $imageBaseName . "o.jpg";
+    $image->imageThumbnail = $imageDir . "/t.jpg";
+    $image->imageSmall     = $imageDir . "/s.jpg";
+    $image->imageMedium    = $imageDir . "/m.jpg";
+    $image->imageLarge     = $imageDir . "/l.jpg";
+    $image->imageOriginal  = $imageDir . "/o.jpg";
     
     // Create the image data files
     self::createDataFiles(
       $image,
-      $dir . "/" . $image->id . ".json",
-      $dir . "/" . $image->id . ".txt",
+      $imageDir . "/" . CConfig::imageJsonFileName,
+      $imageDir . "/" . CConfig::imageDatFileName,
       $status);
     if (!$status->success) {
       return false;
@@ -577,6 +606,14 @@ class CEventDb {
     }
 
     return true;    
+  }
+
+  public static function getAllEventImages($eventName, &$images, &$status) {
+    self::lookupEventByName($eventName, $event, $status);
+    if (!$status->success) {
+      return false;
+    }
+    $images = self::readEventImagesFromFile($event);
   }
   
 }
@@ -604,10 +641,6 @@ class CActionHandlers {
     $payload = json_decode($request->post->payload);
     $status  = new CStatus();
     CEventDb::lookupEventByName($payload->name, $event, $status);
-    if (!$status->success) {
-      $response->fail($status->errorMessage);
-      return;
-    }
     $setEventResponse = CSetEventResponse::newFromEvent($event);
     $response->success($setEventResponse);
   }
@@ -617,6 +650,7 @@ class CActionHandlers {
   }
 
   public static function getAllEvents($request, &$response) {
+    $status = new CStatus();
     CEventDb::getAllEvents($events, $status);
     $getAllEventsResponse = CGetAllEventsResponse::newFromEvents($events);
     $response->success($getAllEventsResponse);
@@ -682,6 +716,12 @@ class CActionHandlers {
     $uploadImageResponse = CUploadImageResponse::newFromImage($image);
     $response->success($uploadImageResponse);
   }
+  
+  public static function getAllEventImages($request, $response) {
+    CEventDb::getAllEventImages($request->get->eventName, $images, $status);
+    $getAllEventImagesResponse = CGetAllEventImagesResponse::newFromImages($images);
+    $response->success($getAllEventImagesResponse);
+  }
 }
 
 function main() {
@@ -709,6 +749,9 @@ function main() {
       break;
     case CActions::uploadImage:
       CActionHandlers::uploadImage($request, $response);
+      break;
+    case CActions::getAllEventImages:
+      CActionHandlers::getAllEventImages($request, $response);
       break;
     default:
       $response->fail("Unknown action: $request->get->action");

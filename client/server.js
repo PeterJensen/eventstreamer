@@ -59,12 +59,13 @@ var server = function () {
   // enumeration of all server actions
 
   var actions = {
-    setUser:          "setUser",
-    setEvent:         "setEvent",
-    getEventsCloseBy: "getEventsCloseBy",
-    getAllEvents:     "getAllEvents",
-    createEvent:      "createEvent",
-    uploadImage:      "uploadImage"
+    setUser:           "setUser",
+    setEvent:          "setEvent",
+    getEventsCloseBy:  "getEventsCloseBy",
+    getAllEvents:      "getAllEvents",
+    createEvent:       "createEvent",
+    uploadImage:       "uploadImage",
+    getAllEventImages: "getAllEventImages"
   };
 
   // -------------------------------------------------------------------------
@@ -112,6 +113,13 @@ var server = function () {
     return config.serverUrl + 
              "?action=" + action +
              "&userName=" + state.userName +
+             makeExtras(extras);
+  }
+  
+  function makeEventUrl(action, extras) {
+    return config.serverUrl + 
+             "?action=" + action +
+             "&eventName=" + state.eventName +
              makeExtras(extras);
   }
   
@@ -166,6 +174,7 @@ var server = function () {
 
   function setEvent(event, callbacks) {
     function success(response) {
+      log(response);
       if (response.payload.exists) {
         state.eventId = response.payload.event.id;
       }
@@ -192,13 +201,6 @@ var server = function () {
     return config.serverPrefix + path;
   }
   
-  function uploadImage(uploadImage, callbacks) {
-    if (!checkEventState() || !checkUserState()) {
-      return;
-    }
-    makeAjaxPostRequest(makeEventUserUrl(actions.uploadImage), uploadImage, callbacks);
-  }
-
   function getEventsCloseBy(position, callbacks) {
     makeAjaxPostRequest(makeBaseUrl(actions.getEventsCloseBy), position, callbacks);
   }
@@ -213,23 +215,38 @@ var server = function () {
     }
   }
 
+  function uploadImage(uploadImage, callbacks) {
+    if (!checkEventState() || !checkUserState()) {
+      return;
+    }
+    makeAjaxPostRequest(makeEventUserUrl(actions.uploadImage), uploadImage, callbacks);
+  }
+
+  function getAllEventImages(callbacks) {
+    if (!checkEventState()) {
+      return;
+    }
+    makeAjaxPostRequest(makeEventUrl(actions.getAllEventImages), {}, callbacks);
+  }
+  
   return {
     // types
-    Position:         Position,
-    Event:            Event,
-    User:             User,
-    SetEvent:         SetEvent,
-    UploadImage:      UploadImage,
+    Position:          Position,
+    Event:             Event,
+    User:              User,
+    SetEvent:          SetEvent,
+    UploadImage:       UploadImage,
     
     // operations
-    setEvent:         setEvent,
-    setUser:          setUser,
-    setErrorCallback: setErrorCallback,
-    getFileUrl:       getFileUrl,
-    getEventsCloseBy: getEventsCloseBy,
-    getAllEvents:     getAllEvents,
-    createEvent:      createEvent,
-    uploadImage:      uploadImage
+    setEvent:          setEvent,
+    setUser:           setUser,
+    setErrorCallback:  setErrorCallback,
+    getFileUrl:        getFileUrl,
+    getEventsCloseBy:  getEventsCloseBy,
+    getAllEvents:      getAllEvents,
+    createEvent:       createEvent,
+    uploadImage:       uploadImage,
+    getAllEventImages: getAllEventImages
   }
   
 }();
