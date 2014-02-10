@@ -718,6 +718,7 @@ class CActionHandlers {
   }
   
   public static function getAllEventImages($request, $response) {
+    $status = new CStatus();
     CEventDb::getAllEventImages($request->get->eventName, $images, $status);
     $getAllEventImagesResponse = CGetAllEventImagesResponse::newFromImages($images);
     $response->success($getAllEventImagesResponse);
