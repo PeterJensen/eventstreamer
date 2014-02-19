@@ -1,11 +1,15 @@
 // Author: Peter Jensen
+/*globals console: true */
+/*globals $: true */
+/*globals console: true */
+/*globals localStorage: true */
 (function () {
 
   // Create some UI elements
-  var $userName  = $("#userName");
-  var $eventName = $("#eventName");
-  var $userInput = $("<input>").attr("type", "text").attr("placeholder", "UserName");
-  var $eventInput = $("<input>").attr("type", "text").attr("placeholder", "EventName");
+  var $userName   = $("#userName");
+  var $eventName  = $("#eventName");
+  var $userInput  = $("<input>").attr("type", "text").attr("placeholder", "UserName").addClass("form-control");
+  var $eventInput = $("<input>").attr("type", "text").attr("placeholder", "EventName").addClass("form-control");
 
   var state = {
     data : {
